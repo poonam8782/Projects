@@ -1,0 +1,14 @@
+# Supabase CLI local state
+.supabase/
+
+# Environment files (prefer root .env)
+.env
+.env.local
+
+# Backups and dumps
+*.backup
+*.dump
+
+# Temp files
+*.tmp
+*.log

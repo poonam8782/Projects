@@ -1,0 +1,21 @@
+# Next.js build outputs
+/.next/
+/out/
+/.vercel/
+
+# Dependencies
+/node_modules/
+
+# Environment variables
+.env*.local
+.env
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+/coverage/
+
+# IDE
+.vscode/
+.idea/

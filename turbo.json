@@ -1,0 +1,59 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    ".env",
+    "tsconfig.json"
+  ],
+  "remoteCache": {
+    "signature": true
+  },
+  "tasks": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "build/**"
+      ]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "outputs": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "**/*.{ts,tsx,js,jsx,py}",
+        ".eslint*",
+        "pyproject.toml"
+      ]
+    },
+    "test": {
+      "dependsOn": [
+        "build"
+      ],
+      "outputs": [
+        "coverage/**",
+        "junit.xml",
+        ".pytest_cache/**"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "src/**/*",
+        "test/**/*",
+        "tests/**/*"
+      ]
+    },
+    "typecheck": {
+      "outputs": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "**/*.{ts,tsx}",
+        "tsconfig.json"
+      ]
+    }
+  }
+}
