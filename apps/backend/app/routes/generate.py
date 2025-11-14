@@ -26,7 +26,13 @@ from app.schemas import (
     GenerateFlashcardsResponse,
     FlashcardResponse,
 )
-from app.services.gemini_client import generate_notes, generate_mindmap, generate_flashcards
+from app.services.gemini_client import (
+    generate_notes,
+    generate_mindmap,
+    generate_mermaid_mindmap,
+    generate_markmap,
+    generate_flashcards,
+)
 from app.utils.sm2 import DEFAULT_EFACTOR, DEFAULT_REPETITIONS, DEFAULT_INTERVAL
 from app.utils.storage_paths import get_notes_path
 
@@ -405,13 +411,18 @@ def get_notes(
 @router.post("/mindmap", response_model=GenerateMindmapResponse)
 def generate_mindmap_endpoint(
     document_id: UUID,
+    format: str = Query("mermaid", regex="^(svg|mermaid|markmap)$"),
     user: dict = Depends(require_user),
 ):
-    """Generate sanitized SVG mindmap from a document's extracted text using Gemini AI.
+    """Generate mindmap from a document's extracted text using Gemini AI.
+
+    Supports multiple formats:
+    - svg: Traditional SVG mindmap with custom layout (sanitized)
+    - mermaid: Mermaid.js mindmap syntax (recommended, best quality)
+    - markmap: Markdown-based mindmap format
 
     Follows same pattern as notes generation: ownership verification, text validation,
-    Gemini non-streaming generation, sanitization (bleach), storage upload (upsert),
-    signed URL creation, structured response.
+    Gemini non-streaming generation, storage upload (upsert), signed URL creation.
     """
     user_id = user["sub"]
     start_time = time.time()
@@ -454,16 +465,35 @@ def generate_mindmap_endpoint(
                 detail="Document has no extracted text. Upload and extract text first.",
             )
 
-        # Generate raw SVG mindmap via Gemini
-        logger.info("Generating mindmap for document %s", document_id)
+        # Generate mindmap based on requested format
+        logger.info("Generating %s mindmap for document %s", format, document_id)
         try:
-            raw_svg = generate_mindmap(
-                extracted_text,
-                temperature=0.5,
-                max_output_tokens=8192,
-            )
+            if format == "mermaid":
+                raw_content = generate_mermaid_mindmap(
+                    extracted_text,
+                    temperature=0.3,
+                    max_output_tokens=4096,
+                )
+                content_type = "text/plain"
+                file_extension = "mmd"
+            elif format == "markmap":
+                raw_content = generate_markmap(
+                    extracted_text,
+                    temperature=0.3,
+                    max_output_tokens=4096,
+                )
+                content_type = "text/markdown"
+                file_extension = "md"
+            else:  # svg
+                raw_content = generate_mindmap(
+                    extracted_text,
+                    temperature=0.5,
+                    max_output_tokens=8192,
+                )
+                content_type = "image/svg+xml"
+                file_extension = "svg"
         except RuntimeError as e:
-            logger.error("Gemini mindmap generation failed for %s: %s", document_id, e)
+            logger.error("Gemini %s mindmap generation failed for %s: %s", format, document_id, e)
             msg = str(e).lower()
             if any(k in msg for k in ("rate limit", "quota", "429")):
                 raise HTTPException(
@@ -475,41 +505,44 @@ def generate_mindmap_endpoint(
                 detail=f"Failed to generate mindmap: {e}",
             )
 
-        if not raw_svg or not raw_svg.strip():
-            logger.error("Generated mindmap SVG is empty for document %s", document_id)
+        if not raw_content or not raw_content.strip():
+            logger.error("Generated %s mindmap is empty for document %s", format, document_id)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Generated mindmap SVG is empty",
+                detail=f"Generated {format} mindmap is empty",
             )
 
-        # Sanitize SVG
-        logger.info("Sanitizing SVG for document %s", document_id)
-        try:
-            sanitized_svg = sanitize_svg(raw_svg)
-            logger.info(
-                "SVG sanitized: %d -> %d chars",
-                len(raw_svg),
-                len(sanitized_svg),
-            )
-        except RuntimeError as e:
-            logger.error("SVG sanitization failed for %s: %s", document_id, e)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="SVG sanitization failed",
-            )
+        # Sanitize only for SVG format
+        if format == "svg":
+            logger.info("Sanitizing SVG for document %s", document_id)
+            try:
+                final_content = sanitize_svg(raw_content)
+                logger.info(
+                    "SVG sanitized: %d -> %d chars",
+                    len(raw_content),
+                    len(final_content),
+                )
+            except RuntimeError as e:
+                logger.error("SVG sanitization failed for %s: %s", document_id, e)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="SVG sanitization failed",
+                )
+        else:
+            final_content = raw_content
 
         # Prepare storage path and filename (include document_id for uniqueness)
-        mindmap_filename = f"{document_id}-mindmap.svg"
+        mindmap_filename = f"{document_id}-mindmap.{file_extension}"
         storage_path = f"processed/{user_id}/{mindmap_filename}"
-        svg_bytes = sanitized_svg.encode("utf-8")
+        content_bytes = final_content.encode("utf-8")
 
         # Upload to Supabase Storage (upsert=True for idempotency)
         try:
             upload_response = supabase.storage.from_(NOTES_BUCKET).upload(
                 path=storage_path,
-                file=svg_bytes,
+                file=content_bytes,
                 file_options={
-                    "content-type": "image/svg+xml",  # use dash not underscore
+                    "content-type": content_type,
                     "upsert": "true",  # must be string, not boolean
                 },
             )
@@ -549,25 +582,34 @@ def generate_mindmap_endpoint(
 
         processing_time = time.time() - start_time
         logger.info(
-            "Mindmap generation for document %s completed in %.2fs",
+            "%s mindmap generation for document %s completed in %.2fs",
+            format.capitalize(),
             document_id,
             processing_time,
         )
 
-        svg_preview = sanitized_svg[:500]
-        # Simple node count heuristic: count circles and rects
-        node_count = len(re.findall(r"<(circle|rect)\b", sanitized_svg, flags=re.IGNORECASE))
+        content_preview = final_content[:500]
+        # Node count heuristic based on format
+        if format == "svg":
+            node_count = len(re.findall(r"<(circle|rect)\b", final_content, flags=re.IGNORECASE))
+        elif format == "mermaid":
+            # Count lines with content (rough estimate of nodes)
+            node_count = len([line for line in final_content.split("\n") if line.strip() and not line.strip().startswith("mindmap")])
+        else:  # markmap
+            # Count markdown headings
+            node_count = len(re.findall(r"^#{1,6}\s+", final_content, re.MULTILINE))
 
         return GenerateMindmapResponse(
             document_id=document_id,
             filename=mindmap_filename,
             storage_path=storage_path,
             download_url=signed_url,
-            svg_preview=svg_preview,
-            size_bytes=len(svg_bytes),
+            format=format,
+            content_preview=content_preview,
+            size_bytes=len(content_bytes),
             node_count=node_count or None,
             status="success",
-            message="Mindmap generated successfully",
+            message=f"{format.capitalize()} mindmap generated successfully",
             processing_time_seconds=processing_time,
         )
 

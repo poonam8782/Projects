@@ -150,7 +150,7 @@ def embed_document(
             embeddings = generate_embeddings_batch(
                 chunks,
                 task_type="RETRIEVAL_DOCUMENT",
-                dimensions=1536
+                dimensions=768
             )
             embedding_count = len(embeddings)
             logger.info(f"Generated {embedding_count} embeddings for document {document_id}")

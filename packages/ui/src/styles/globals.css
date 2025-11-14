@@ -1,53 +1,60 @@
 :root {
-  /* Light mode (default) - Landing/Marketing theme */
-  --background: 0 0% 100%;
-  --foreground: 220 13% 9%;
+  /* Light mode - Neo palette */
+  /* neo-bg (#FFFAE5) */
+  --background: 45 100% 96%;
+  /* neo-black (#0f0f0f) */
+  --foreground: 40 70% 6%;
+  /* neo-white (#ffffff) */
   --card: 0 0% 100%;
-  --card-foreground: 220 13% 9%;
+  --card-foreground: 40 70% 6%;
   --popover: 0 0% 100%;
-  --popover-foreground: 220 13% 9%;
-  --primary: 14 100% 64%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 220 13% 9%;
-  --secondary-foreground: 0 0% 100%;
-  --muted: 220 9% 46%;
-  --muted-foreground: 220 9% 46%;
-  --accent: 14 100% 64%;
+  --popover-foreground: 40 70% 6%;
+  /* neo-main (#FF4D00) */
+  --primary: 16 100% 50%;
+  --primary-foreground: 0 0% 100%; /* neo-white */
+  /* neo-accent (#A3FF00) */
+  --secondary: 90 100% 50%;
+  --secondary-foreground: 40 70% 6%;
+  /* subtle muted tone based on neo-bg */
+  --muted: 45 40% 85%;
+  --muted-foreground: 40 25% 35%;
+  /* neo-purple (#9D00FF) as accent */
+  --accent: 273 100% 50%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --border: 0 0% 90%;
-  --input: 0 0% 90%;
-  --ring: 14 100% 64%;
+  --border: 40 70% 6%;
+  --input: 40 70% 6%;
+  --ring: 40 70% 6%;
   --radius: 0.5rem;
 
-  /* Gradient background tokens */
+  /* Gradient background tokens (used by landing) */
   --gradient-left: 253 100% 97%;
   --gradient-center: 33 100% 97%;
   --gradient-right: 140 86% 95%;
 }
 
 .dark {
-  /* Dark mode - App/Dashboard theme */
-  --background: 0 0% 0%;
+  /* Dark mode using neo-black and neo accents */
+  --background: 0 0% 5%;        /* close to neo-black */
   --foreground: 0 0% 100%;
-  --card: 0 0% 2.7%;
+  --card: 0 0% 9%;
   --card-foreground: 0 0% 100%;
-  --popover: 0 0% 2.7%;
+  --popover: 0 0% 9%;
   --popover-foreground: 0 0% 100%;
-  --primary: 0 0% 100%;
-  --primary-foreground: 0 0% 0%;
-  --secondary: 0 0% 2.7%;
-  --secondary-foreground: 0 0% 100%;
-  --muted: 0 0% 2.7%;
+  --primary: 16 100% 50%;       /* neo-main */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 90 100% 50%;     /* neo-accent */
+  --secondary-foreground: 0 0% 0%;
+  --muted: 0 0% 16%;
   --muted-foreground: 0 0% 74%;
-  --accent: 0 0% 2.7%;
+  --accent: 273 100% 50%;       /* neo-purple */
   --accent-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --border: 0 0% 100% / 0.06;
-  --input: 0 0% 100% / 0.06;
-  --ring: 0 0% 100% / 0.06;
+  --border: 0 0% 100% / 0.12;
+  --input: 0 0% 100% / 0.12;
+  --ring: 0 0% 100% / 0.12;
 }
 
 body {

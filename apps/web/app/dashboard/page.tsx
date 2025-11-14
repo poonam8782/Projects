@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { ProtectedRoute } from '@/lib/auth/protected-route';
-import { useAuth } from '@/lib/auth/auth-context';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useCallback } from "react";
+import { ProtectedRoute } from "@/lib/auth/protected-route";
+import { useAuth } from "@/lib/auth/auth-context";
+import { motion } from "framer-motion";
 import {
   Button,
   Card,
@@ -18,17 +18,49 @@ import {
   DialogDescription,
   DialogFooter,
   Checkbox,
-} from '@neura/ui';
-import FileUploader from '@/components/FileUploader';
-import TopNav from '@/components/TopNav';
-import { DocumentMetadata, FlashcardResponse, ExportRequest, SynthesizeRequest, DocumentSource } from '@/lib/types/document';
-import { formatFileSize, formatDate } from '@/lib/utils/format';
-import { FileText, Download, Trash2, AlertCircle, Loader2, Eye, Sparkles, MessageSquare, FileDown, BookOpen, GraduationCap, FileArchive, Network } from 'lucide-react';
-import { toast } from 'sonner';
-import { getDocuments, deleteDocument as apiDeleteDocument, getDownloadUrl, embedDocument, generateNotes, generateMindmap, generateFlashcards, getFlashcardsByDocument, exportDocument, synthesizeDocuments, getNotes } from '@/services/api';
-import MindmapViewer from '@/components/MindmapViewer';
-import { useRouter } from 'next/navigation';
-import { getFileTypeLabel, getStatusBadgeVariant } from '@/lib/utils/document';
+} from "@neura/ui";
+import FileUploader from "@/components/FileUploader";
+import TopNav from "@/components/TopNav";
+import {
+  DocumentMetadata,
+  FlashcardResponse,
+  ExportRequest,
+  SynthesizeRequest,
+  DocumentSource,
+} from "@/lib/types/document";
+import { formatFileSize, formatDate } from "@/lib/utils/format";
+import {
+  FileText,
+  Download,
+  Trash2,
+  AlertCircle,
+  Loader2,
+  Eye,
+  Sparkles,
+  MessageSquare,
+  FileDown,
+  BookOpen,
+  GraduationCap,
+  FileArchive,
+  Network,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  getDocuments,
+  deleteDocument as apiDeleteDocument,
+  getDownloadUrl,
+  embedDocument,
+  generateNotes,
+  generateMindmap,
+  generateFlashcards,
+  getFlashcardsByDocument,
+  exportDocument,
+  synthesizeDocuments,
+  getNotes,
+} from "@/services/api";
+import MindmapViewerUnified from "@/components/MindmapViewerUnified";
+import { useRouter } from "next/navigation";
+import { getFileTypeLabel, getStatusBadgeVariant } from "@/lib/utils/document";
 
 // Loading animation variants
 const barVariants = {
@@ -57,25 +89,30 @@ const BarLoader = () => {
       }}
       initial="initial"
       animate="animate"
-      className="flex gap-1"
-    >
-      <motion.div variants={barVariants} className="h-12 w-2 bg-[#ff8800]" />
-      <motion.div variants={barVariants} className="h-12 w-2 bg-[#ff8800]" />
-      <motion.div variants={barVariants} className="h-12 w-2 bg-[#ff8800]" />
-      <motion.div variants={barVariants} className="h-12 w-2 bg-[#ff8800]" />
-      <motion.div variants={barVariants} className="h-12 w-2 bg-[#ff8800]" />
+      className="flex gap-1">
+      <motion.div variants={barVariants} className="h-12 w-2 bg-neo-main" />
+      <motion.div variants={barVariants} className="h-12 w-2 bg-neo-main" />
+      <motion.div variants={barVariants} className="h-12 w-2 bg-neo-main" />
+      <motion.div variants={barVariants} className="h-12 w-2 bg-neo-main" />
+      <motion.div variants={barVariants} className="h-12 w-2 bg-neo-main" />
     </motion.div>
   );
 };
 
 // Loading Dialog Component
-const LoadingDialog = ({ open, message }: { open: boolean; message: string }) => {
+const LoadingDialog = ({
+  open,
+  message,
+}: {
+  open: boolean;
+  message: string;
+}) => {
   return (
     <Dialog open={open}>
-      <DialogContent className="sm:max-w-md bg-white border-0 shadow-2xl">
+      <DialogContent className="sm:max-w-md bg-neo-white border-4 border-neo-black shadow-neo">
         <div className="flex flex-col items-center justify-center py-8 gap-6">
           <BarLoader />
-          <p className="text-lg font-medium text-gray-700">{message}</p>
+          <p className="text-lg font-medium text-neo-black">{message}</p>
         </div>
       </DialogContent>
     </Dialog>
@@ -85,33 +122,68 @@ const LoadingDialog = ({ open, message }: { open: boolean; message: string }) =>
 export default function DashboardPage() {
   const { user, signOut } = useAuth();
   const router = useRouter();
-  
+
   // State management
   const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
-  const [flashcardMetadata, setFlashcardMetadata] = useState<Map<string, { count: number; nextReview: string | null }>>(new Map());
-  const [notesMetadata, setNotesMetadata] = useState<Map<string, boolean>>(new Map());
+  const [flashcardMetadata, setFlashcardMetadata] = useState<
+    Map<string, { count: number; nextReview: string | null }>
+  >(new Map());
+  const [notesMetadata, setNotesMetadata] = useState<Map<string, boolean>>(
+    new Map(),
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [documentToDelete, setDocumentToDelete] = useState<DocumentMetadata | null>(null);
+  const [documentToDelete, setDocumentToDelete] =
+    useState<DocumentMetadata | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [embeddingDocuments, setEmbeddingDocuments] = useState<Set<string>>(new Set());
-  const [generatingNotes, setGeneratingNotes] = useState<Set<string>>(new Set());
-  const [generatingMindmaps, setGeneratingMindmaps] = useState<Set<string>>(new Set());
-  const [generatingFlashcards, setGeneratingFlashcards] = useState<Set<string>>(new Set());
+  const [embeddingDocuments, setEmbeddingDocuments] = useState<Set<string>>(
+    new Set(),
+  );
+  const [generatingNotes, setGeneratingNotes] = useState<Set<string>>(
+    new Set(),
+  );
+  const [generatingMindmaps, setGeneratingMindmaps] = useState<Set<string>>(
+    new Set(),
+  );
+  const [generatingFlashcards, setGeneratingFlashcards] = useState<Set<string>>(
+    new Set(),
+  );
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [mindmapDialogOpen, setMindmapDialogOpen] = useState(false);
   const [flashcardsDialogOpen, setFlashcardsDialogOpen] = useState(false);
-  const [currentNotes, setCurrentNotes] = useState<{ content: string; filename: string; downloadUrl: string; documentId: string } | null>(null);
-  const [currentMindmap, setCurrentMindmap] = useState<{ downloadUrl: string; filename: string; nodeCount: number | null } | null>(null);
-  const [currentFlashcards, setCurrentFlashcards] = useState<{ documentId: string; flashcards: FlashcardResponse[]; count: number } | null>(null);
-  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
-  const [exportFormat, setExportFormat] = useState<'markdown' | 'pdf'>('markdown');
+  const [currentNotes, setCurrentNotes] = useState<{
+    content: string;
+    filename: string;
+    downloadUrl: string;
+    documentId: string;
+  } | null>(null);
+  const [currentMindmap, setCurrentMindmap] = useState<{
+    downloadUrl: string;
+    filename: string;
+    nodeCount: number | null;
+    format: "svg" | "mermaid" | "markmap";
+  } | null>(null);
+  const [currentFlashcards, setCurrentFlashcards] = useState<{
+    documentId: string;
+    flashcards: FlashcardResponse[];
+    count: number;
+  } | null>(null);
+  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(
+    new Set(),
+  );
+  const [exportFormat, setExportFormat] = useState<"markdown" | "pdf">(
+    "markdown",
+  );
   const [exporting, setExporting] = useState(false);
   const [synthesisDialogOpen, setSynthesisDialogOpen] = useState(false);
-  const [synthesisResult, setSynthesisResult] = useState<{ markdown: string; sources: DocumentSource[]; type: string } | null>(null);
+  const [synthesisResult, setSynthesisResult] = useState<{
+    markdown: string;
+    sources: DocumentSource[];
+    type: string;
+  } | null>(null);
   const [loadingDialogOpen, setLoadingDialogOpen] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('Processing...');
+  const [loadingMessage, setLoadingMessage] = useState("Processing...");
 
   const handleSignOut = async () => {
     await signOut();
@@ -121,21 +193,24 @@ export default function DashboardPage() {
   // Called by FileUploader after successful upload to refresh document list
   const fetchFlashcardMetadata = useCallback(async (documentIds: string[]) => {
     try {
-      const metadata = new Map<string, { count: number; nextReview: string | null }>();
+      const metadata = new Map<
+        string,
+        { count: number; nextReview: string | null }
+      >();
       const nowIso = new Date().toISOString();
 
       for (const documentId of documentIds) {
         try {
           const flashcards = await getFlashcardsByDocument(documentId);
           const count = flashcards.length;
-          
+
           // Find earliest next_review (prefer due cards, then upcoming)
           let nextReview: string | null = null;
           if (flashcards.length > 0) {
-            const dueCards = flashcards.filter(c => c.next_review <= nowIso);
+            const dueCards = flashcards.filter((c) => c.next_review <= nowIso);
             const cardsToCheck = dueCards.length > 0 ? dueCards : flashcards;
-            const sortedCards = cardsToCheck.sort((a, b) => 
-              a.next_review.localeCompare(b.next_review)
+            const sortedCards = cardsToCheck.sort((a, b) =>
+              a.next_review.localeCompare(b.next_review),
             );
             if (sortedCards.length > 0 && sortedCards[0]) {
               nextReview = sortedCards[0].next_review;
@@ -144,14 +219,17 @@ export default function DashboardPage() {
 
           metadata.set(documentId, { count, nextReview });
         } catch (err) {
-          console.warn(`Failed to fetch flashcards for document ${documentId}:`, err);
+          console.warn(
+            `Failed to fetch flashcards for document ${documentId}:`,
+            err,
+          );
           // Continue with other documents
         }
       }
 
       setFlashcardMetadata(metadata);
     } catch (err) {
-      console.warn('Failed to fetch flashcard metadata:', err);
+      console.warn("Failed to fetch flashcard metadata:", err);
       // Don't fail the whole dashboard if metadata fetch fails
     }
   }, []);
@@ -170,7 +248,10 @@ export default function DashboardPage() {
           return { id: documentId, hasNotes: true };
         } catch (err) {
           // For errors (401, 500, etc.), log warning and return undefined
-          console.warn(`Failed to check notes for document ${documentId}:`, err);
+          console.warn(
+            `Failed to check notes for document ${documentId}:`,
+            err,
+          );
           return { id: documentId, hasNotes: undefined };
         }
       });
@@ -179,14 +260,17 @@ export default function DashboardPage() {
       const metadata = new Map<string, boolean>();
 
       results.forEach((result) => {
-        if (result.status === 'fulfilled' && result.value.hasNotes !== undefined) {
+        if (
+          result.status === "fulfilled" &&
+          result.value.hasNotes !== undefined
+        ) {
           metadata.set(result.value.id, result.value.hasNotes);
         }
       });
 
       setNotesMetadata(metadata);
     } catch (err) {
-      console.warn('Failed to fetch notes metadata:', err);
+      console.warn("Failed to fetch notes metadata:", err);
       // Don't fail the whole dashboard if metadata fetch fails
     }
   }, []);
@@ -195,18 +279,19 @@ export default function DashboardPage() {
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const documents = await getDocuments();
       setDocuments(documents);
       // Fetch both flashcard and notes metadata in parallel
       await Promise.all([
-        fetchFlashcardMetadata(documents.map(d => d.id)),
-        fetchNotesMetadata(documents.map(d => d.id))
+        fetchFlashcardMetadata(documents.map((d) => d.id)),
+        fetchNotesMetadata(documents.map((d) => d.id)),
       ]);
     } catch (err) {
-      console.error('Error fetching documents:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load documents';
+      console.error("Error fetching documents:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to load documents";
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -214,7 +299,7 @@ export default function DashboardPage() {
   }, [fetchFlashcardMetadata, fetchNotesMetadata]);
 
   const handleUploadComplete = useCallback(() => {
-    toast.success('Document uploaded successfully');
+    toast.success("Document uploaded successfully");
     void fetchDocuments();
   }, [fetchDocuments]);
 
@@ -225,8 +310,10 @@ export default function DashboardPage() {
 
   // Clean up selection state when documents change (e.g., after deletion)
   useEffect(() => {
-    const currentIds = new Set(documents.map(doc => doc.id));
-    setSelectedDocuments(prev => new Set([...prev].filter(id => currentIds.has(id))));
+    const currentIds = new Set(documents.map((doc) => doc.id));
+    setSelectedDocuments(
+      (prev) => new Set([...prev].filter((id) => currentIds.has(id))),
+    );
   }, [documents]);
 
   // Handle delete button click
@@ -238,20 +325,21 @@ export default function DashboardPage() {
   // Confirm delete
   const confirmDelete = async () => {
     if (!documentToDelete) return;
-    
+
     setDeleting(true);
-    
+
     try {
       await apiDeleteDocument(documentToDelete.id);
-      
+
       // Remove document from local state
-      setDocuments(prev => prev.filter(d => d.id !== documentToDelete.id));
-      toast.success('Document deleted successfully');
+      setDocuments((prev) => prev.filter((d) => d.id !== documentToDelete.id));
+      toast.success("Document deleted successfully");
       setDeleteDialogOpen(false);
       setDocumentToDelete(null);
     } catch (err) {
-      console.error('Error deleting document:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete document';
+      console.error("Error deleting document:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to delete document";
       toast.error(errorMessage);
     } finally {
       setDeleting(false);
@@ -262,10 +350,11 @@ export default function DashboardPage() {
   const handleDownload = async (document: DocumentMetadata) => {
     try {
       const url = await getDownloadUrl(document.id);
-      window.open(url, '_blank');
+      window.open(url, "_blank");
     } catch (err) {
-      console.error('Error downloading document:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to download document';
+      console.error("Error downloading document:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to download document";
       toast.error(errorMessage);
     }
   };
@@ -274,10 +363,11 @@ export default function DashboardPage() {
   const handleOpen = async (document: DocumentMetadata) => {
     try {
       const url = await getDownloadUrl(document.id);
-      window.open(url, '_blank');
+      window.open(url, "_blank");
     } catch (err) {
-      console.error('Error opening document:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to open document';
+      console.error("Error opening document:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to open document";
       toast.error(errorMessage);
     }
   };
@@ -285,16 +375,16 @@ export default function DashboardPage() {
   // Handle embed
   const handleEmbed = async (document: DocumentMetadata) => {
     // Validate document status
-    if (document.status !== 'extracted') {
-      toast.error('Document must have extracted text before embedding');
+    if (document.status !== "extracted") {
+      toast.error("Document must have extracted text before embedding");
       return;
     }
 
     // Add document ID to embedding set
-    setEmbeddingDocuments(prev => new Set(prev).add(document.id));
+    setEmbeddingDocuments((prev) => new Set(prev).add(document.id));
 
     // Show loading toast
-    const toastId = toast.loading('Generating embeddings...');
+    const toastId = toast.loading("Generating embeddings...");
 
     try {
       // Call embed API
@@ -304,32 +394,40 @@ export default function DashboardPage() {
       toast.dismiss(toastId);
 
       // Compute safe duration string
-      const durationString = typeof result.processing_time_seconds === 'number' 
-        ? ` (${result.processing_time_seconds.toFixed(1)}s)` 
-        : '';
+      const durationString =
+        typeof result.processing_time_seconds === "number"
+          ? ` (${result.processing_time_seconds.toFixed(1)}s)`
+          : "";
 
       // Show success toast with processing time
-      toast.success(`${result.message || 'Embeddings generated successfully'}${durationString}`);
+      toast.success(
+        `${
+          result.message || "Embeddings generated successfully"
+        }${durationString}`,
+      );
 
       // Update local document state to reflect new status
-      setDocuments(prev => prev.map(d => 
-        d.id === document.id ? { ...d, status: 'embedded' as const } : d
-      ));
+      setDocuments((prev) =>
+        prev.map((d) =>
+          d.id === document.id ? { ...d, status: "embedded" as const } : d,
+        ),
+      );
     } catch (err) {
       // Dismiss loading toast
       toast.dismiss(toastId);
 
       // Extract error message
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate embeddings';
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to generate embeddings";
 
       // Show error toast
       toast.error(errorMessage);
 
       // Log error for debugging
-      console.error('Error embedding document:', err);
+      console.error("Error embedding document:", err);
     } finally {
       // Remove document ID from embedding set
-      setEmbeddingDocuments(prev => {
+      setEmbeddingDocuments((prev) => {
         const next = new Set(prev);
         next.delete(document.id);
         return next;
@@ -339,13 +437,13 @@ export default function DashboardPage() {
 
   // Navigate to future document detail page with chat
   const handleChat = (document: DocumentMetadata) => {
-    if (document.status !== 'embedded') {
-      toast.error('Document must be embedded before chatting');
+    if (document.status !== "embedded") {
+      toast.error("Document must be embedded before chatting");
       return;
     }
     // Placeholder navigation - detail page will host DocumentChat component in Sprint 3 Phase 2
-  // Casting to string route for now pending detail page creation
-    router.push(`/document/${document.id}`)
+    // Casting to string route for now pending detail page creation
+    router.push(`/document/${document.id}`);
   };
 
   // Navigate to view notes page
@@ -360,33 +458,41 @@ export default function DashboardPage() {
 
   // Handle generate notes
   const handleGenerateNotes = async (document: DocumentMetadata) => {
-    if (document.status === 'uploaded') {
-      toast.error('Document must have extracted text before generating notes');
+    if (document.status === "uploaded") {
+      toast.error("Document must have extracted text before generating notes");
       return;
     }
-    setGeneratingNotes(prev => new Set(prev).add(document.id));
-    setLoadingMessage('Generating notes...');
+    setGeneratingNotes((prev) => new Set(prev).add(document.id));
+    setLoadingMessage("Generating notes...");
     setLoadingDialogOpen(true);
     try {
       const result = await generateNotes(document.id);
       setLoadingDialogOpen(false);
-      const duration = typeof result.processing_time_seconds === 'number' ? ` (${result.processing_time_seconds.toFixed(1)}s)` : '';
+      const duration =
+        typeof result.processing_time_seconds === "number"
+          ? ` (${result.processing_time_seconds.toFixed(1)}s)`
+          : "";
       toast.success(`Notes generated${duration}`);
       setCurrentNotes({
-        content: result.content_preview || '',
+        content: result.content_preview || "",
         filename: result.filename,
         downloadUrl: result.download_url,
         documentId: document.id,
       });
-      setNotesMetadata(prev => { const next = new Map(prev); next.set(document.id, true); return next; });
+      setNotesMetadata((prev) => {
+        const next = new Map(prev);
+        next.set(document.id, true);
+        return next;
+      });
       setNotesDialogOpen(true);
     } catch (err) {
       setLoadingDialogOpen(false);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate notes';
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to generate notes";
       toast.error(errorMessage);
-      console.error('Error generating notes:', err);
+      console.error("Error generating notes:", err);
     } finally {
-      setGeneratingNotes(prev => {
+      setGeneratingNotes((prev) => {
         const next = new Set(prev);
         next.delete(document.id);
         return next;
@@ -396,31 +502,38 @@ export default function DashboardPage() {
 
   // Handle generate mindmap
   const handleGenerateMindmap = async (document: DocumentMetadata) => {
-    if (document.status === 'uploaded') {
-      toast.error('Document must have extracted text before generating mindmap');
+    if (document.status === "uploaded") {
+      toast.error(
+        "Document must have extracted text before generating mindmap",
+      );
       return;
     }
-    setGeneratingMindmaps(prev => new Set(prev).add(document.id));
-    setLoadingMessage('Generating mindmap...');
+    setGeneratingMindmaps((prev) => new Set(prev).add(document.id));
+    setLoadingMessage("Generating mindmap...");
     setLoadingDialogOpen(true);
     try {
-      const result = await generateMindmap(document.id);
+      const result = await generateMindmap(document.id, "mermaid");
       setLoadingDialogOpen(false);
-      const duration = typeof result.processing_time_seconds === 'number' ? ` (${result.processing_time_seconds.toFixed(1)}s)` : '';
+      const duration =
+        typeof result.processing_time_seconds === "number"
+          ? ` (${result.processing_time_seconds.toFixed(1)}s)`
+          : "";
       toast.success(`Mindmap generated${duration}`);
       setCurrentMindmap({
         downloadUrl: result.download_url,
         filename: result.filename,
         nodeCount: result.node_count || null,
+        format: result.format,
       });
       setMindmapDialogOpen(true);
     } catch (err) {
       setLoadingDialogOpen(false);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate mindmap';
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to generate mindmap";
       toast.error(errorMessage);
-      console.error('Error generating mindmap:', err);
+      console.error("Error generating mindmap:", err);
     } finally {
-      setGeneratingMindmaps(prev => {
+      setGeneratingMindmaps((prev) => {
         const next = new Set(prev);
         next.delete(document.id);
         return next;
@@ -430,31 +543,52 @@ export default function DashboardPage() {
 
   // Handle generate flashcards
   const handleGenerateFlashcards = async (document: DocumentMetadata) => {
-    if (document.status === 'uploaded') {
-      toast.error('Document must have extracted text before generating flashcards');
+    if (document.status === "uploaded") {
+      toast.error(
+        "Document must have extracted text before generating flashcards",
+      );
       return;
     }
-    setGeneratingFlashcards(prev => new Set(prev).add(document.id));
-    setLoadingMessage('Generating flashcards...');
+    setGeneratingFlashcards((prev) => new Set(prev).add(document.id));
+    setLoadingMessage("Generating flashcards...");
     setLoadingDialogOpen(true);
     try {
       const result = await generateFlashcards(document.id, 10);
       setLoadingDialogOpen(false);
-      toast.success(`${result.flashcard_count} flashcards generated (${result.processing_time_seconds.toFixed(1)}s)`);
+      toast.success(
+        `${
+          result.flashcard_count
+        } flashcards generated (${result.processing_time_seconds.toFixed(1)}s)`,
+      );
       setCurrentFlashcards({
         documentId: document.id,
         flashcards: result.flashcards,
         count: result.flashcard_count,
       });
-      setFlashcardMetadata(prev => { const next = new Map(prev); const nowIso = new Date().toISOString(); const flashcards = result.flashcards; const count = result.flashcard_count; const due = flashcards.filter(c => c.next_review <= nowIso); const pool = due.length > 0 ? due : flashcards; const nextReview = pool.length > 0 ? (pool.sort((a,b) => a.next_review.localeCompare(b.next_review))[0]?.next_review ?? null) : null; next.set(document.id, { count, nextReview }); return next; });
+      setFlashcardMetadata((prev) => {
+        const next = new Map(prev);
+        const nowIso = new Date().toISOString();
+        const flashcards = result.flashcards;
+        const count = result.flashcard_count;
+        const due = flashcards.filter((c) => c.next_review <= nowIso);
+        const pool = due.length > 0 ? due : flashcards;
+        const nextReview =
+          pool.length > 0
+            ? pool.sort((a, b) => a.next_review.localeCompare(b.next_review))[0]
+                ?.next_review ?? null
+            : null;
+        next.set(document.id, { count, nextReview });
+        return next;
+      });
       setFlashcardsDialogOpen(true);
     } catch (err) {
       setLoadingDialogOpen(false);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate flashcards';
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to generate flashcards";
       toast.error(errorMessage);
-      console.error('Error generating flashcards:', err);
+      console.error("Error generating flashcards:", err);
     } finally {
-      setGeneratingFlashcards(prev => {
+      setGeneratingFlashcards((prev) => {
         const next = new Set(prev);
         next.delete(document.id);
         return next;
@@ -464,7 +598,7 @@ export default function DashboardPage() {
 
   // Selection handlers
   const handleToggleSelect = (documentId: string) => {
-    setSelectedDocuments(prev => {
+    setSelectedDocuments((prev) => {
       const next = new Set(prev);
       if (next.has(documentId)) {
         next.delete(documentId);
@@ -476,7 +610,7 @@ export default function DashboardPage() {
   };
 
   const handleSelectAll = () => {
-    setSelectedDocuments(new Set(documents.map(doc => doc.id)));
+    setSelectedDocuments(new Set(documents.map((doc) => doc.id)));
   };
 
   const handleDeselectAll = () => {
@@ -487,13 +621,13 @@ export default function DashboardPage() {
   const handleExport = async () => {
     // Validate selection
     if (selectedDocuments.size === 0) {
-      toast.error('Please select at least one document');
+      toast.error("Please select at least one document");
       return;
     }
 
     // Validate maximum for synthesis
     if (selectedDocuments.size > 10) {
-      toast.error('Maximum 10 documents for synthesis');
+      toast.error("Maximum 10 documents for synthesis");
       return;
     }
 
@@ -504,10 +638,10 @@ export default function DashboardPage() {
         // Single document export
         const documentId = Array.from(selectedDocuments)[0];
         if (!documentId) {
-          toast.error('Invalid document selection');
+          toast.error("Invalid document selection");
           return;
         }
-        setLoadingMessage('Exporting document...');
+        setLoadingMessage("Exporting document...");
         setLoadingDialogOpen(true);
 
         const request: ExportRequest = {
@@ -520,36 +654,49 @@ export default function DashboardPage() {
 
         const result = await exportDocument(request);
         setLoadingDialogOpen(false);
-        toast.success(`Export generated (${result.processing_time_seconds.toFixed(1)}s)`);
-        window.open(result.download_url, '_blank');
-        toast.info(`Included: ${result.included_sections.join(', ')}`);
+        toast.success(
+          `Export generated (${result.processing_time_seconds.toFixed(1)}s)`,
+        );
+        window.open(result.download_url, "_blank");
+        toast.info(`Included: ${result.included_sections.join(", ")}`);
         setSelectedDocuments(new Set());
       } else {
         // Multi-document synthesis
         // Validate all selected documents have extracted text
         const selectedDocIds = Array.from(selectedDocuments);
         const ineligibleDocs = selectedDocIds
-          .map(id => documents.find(doc => doc.id === id))
-          .filter(doc => doc && doc.status !== 'extracted' && doc.status !== 'embedded')
-          .map(doc => doc?.filename);
+          .map((id) => documents.find((doc) => doc.id === id))
+          .filter(
+            (doc) =>
+              doc && doc.status !== "extracted" && doc.status !== "embedded",
+          )
+          .map((doc) => doc?.filename);
 
         if (ineligibleDocs.length > 0) {
-          toast.error(`Cannot synthesize: The following documents lack extracted text: ${ineligibleDocs.join(', ')}`);
+          toast.error(
+            `Cannot synthesize: The following documents lack extracted text: ${ineligibleDocs.join(
+              ", ",
+            )}`,
+          );
           return;
         }
 
-        setLoadingMessage(`Synthesizing ${selectedDocuments.size} documents...`);
+        setLoadingMessage(
+          `Synthesizing ${selectedDocuments.size} documents...`,
+        );
         setLoadingDialogOpen(true);
 
         const request: SynthesizeRequest = {
           document_ids: selectedDocIds,
-          synthesis_type: 'summary',
+          synthesis_type: "summary",
           include_embeddings: false,
         };
 
         const result = await synthesizeDocuments(request);
         setLoadingDialogOpen(false);
-        toast.success(`Synthesis complete (${result.processing_time_seconds.toFixed(1)}s)`);
+        toast.success(
+          `Synthesis complete (${result.processing_time_seconds.toFixed(1)}s)`,
+        );
         setSynthesisResult({
           markdown: result.markdown_output,
           sources: result.sources,
@@ -560,9 +707,12 @@ export default function DashboardPage() {
       }
     } catch (err) {
       setLoadingDialogOpen(false);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to export/synthesize documents';
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Failed to export/synthesize documents";
       toast.error(errorMessage);
-      console.error('Error exporting/synthesizing:', err);
+      console.error("Error exporting/synthesizing:", err);
     } finally {
       setExporting(false);
     }
@@ -572,9 +722,11 @@ export default function DashboardPage() {
   const handleDownloadSynthesis = () => {
     if (!synthesisResult) return;
 
-    const blob = new Blob([synthesisResult.markdown], { type: 'text/markdown' });
+    const blob = new Blob([synthesisResult.markdown], {
+      type: "text/markdown",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `synthesis-${Date.now()}.md`;
     document.body.appendChild(a);
@@ -587,12 +739,7 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <TopNav />
       <main
-        className="min-h-screen p-8"
-        style={{
-          background: "radial-gradient(circle at 15% 20%, #F6F5FF 0%, #FFF6EF 45%, #EDF7F0 100%)",
-          color: "#111827"
-        }}
-      >
+        className="min-h-screen p-8 bg-neo-bg text-neo-black">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl font-bold">Dashboard</h1>
@@ -605,16 +752,20 @@ export default function DashboardPage() {
 
         <div className="space-y-8">
           <div>
-            <h2 className="text-2xl font-semibold text-text-ui mb-4">Upload Document</h2>
+            <h2 className="text-2xl font-semibold text-text-ui mb-4">
+              Upload Document
+            </h2>
             <FileUploader onUploadComplete={handleUploadComplete} />
           </div>
 
           <div>
-            <h2 className="text-2xl font-semibold text-text-ui mb-4">Your Documents</h2>
-            
+            <h2 className="text-2xl font-semibold text-text-ui mb-4">
+              Your Documents
+            </h2>
+
             {/* Export controls - only show when documents exist */}
             {documents.length > 0 && (
-              <div className="flex items-center justify-between mb-4 p-4 bg-surface-ui border border-border-ui rounded-lg">
+              <div className="flex items-center justify-between mb-4 p-4 bg-neo-white border-2 border-neo-black rounded-lg">
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-muted-ui">
                     {selectedDocuments.size} selected
@@ -623,73 +774,78 @@ export default function DashboardPage() {
                     variant="ghost"
                     size="sm"
                     onClick={handleSelectAll}
-                    disabled={selectedDocuments.size === documents.length}
-                  >
+                    disabled={selectedDocuments.size === documents.length}>
                     Select All
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleDeselectAll}
-                    disabled={selectedDocuments.size === 0}
-                  >
+                    disabled={selectedDocuments.size === 0}>
                     Clear
                   </Button>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
                     <Button
-                      variant={exportFormat === 'markdown' ? 'default' : 'outline'}
+                      variant={
+                        exportFormat === "markdown" ? "default" : "outline"
+                      }
                       size="sm"
-                      onClick={() => setExportFormat('markdown')}
-                    >
+                      onClick={() => setExportFormat("markdown")}>
                       Markdown
                     </Button>
                     <Button
-                      variant={exportFormat === 'pdf' ? 'default' : 'outline'}
+                      variant={exportFormat === "pdf" ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setExportFormat('pdf')}
-                    >
+                      onClick={() => setExportFormat("pdf")}>
                       PDF
                     </Button>
                   </div>
                   <Button
                     onClick={() => void handleExport()}
-                    disabled={selectedDocuments.size === 0 || exporting}
-                  >
+                    disabled={selectedDocuments.size === 0 || exporting}>
                     {exporting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        {selectedDocuments.size === 1 ? 'Exporting...' : 'Synthesizing...'}
+                        {selectedDocuments.size === 1
+                          ? "Exporting..."
+                          : "Synthesizing..."}
                       </>
                     ) : (
                       <>
                         <FileArchive className="w-4 h-4 mr-2" />
-                        {selectedDocuments.size === 1 ? 'Export' : selectedDocuments.size > 1 ? 'Synthesize' : 'Export'}
+                        {selectedDocuments.size === 1
+                          ? "Export"
+                          : selectedDocuments.size > 1
+                          ? "Synthesize"
+                          : "Export"}
                       </>
                     )}
                   </Button>
                 </div>
               </div>
             )}
-            
+
             {/* Loading state */}
             {loading && (
-              <Card className="bg-surface-ui border-border-ui">
+              <Card className="bg-neo-white border-2 border-neo-black">
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 text-muted-ui animate-spin mb-4" />
-                  <p className="text-muted-ui">Loading documents...</p>
+                  <Loader2 className="w-8 h-8 text-neo-main animate-spin mb-4" />
+                  <p className="text-neo-black/70">Loading documents...</p>
                 </CardContent>
               </Card>
             )}
 
             {/* Error state */}
             {error && !loading && (
-              <Card className="bg-surface-ui border-border-ui">
+              <Card className="bg-neo-white border-2 border-neo-black">
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <AlertCircle className="w-8 h-8 text-muted-ui mb-4" />
-                  <p className="text-muted-ui mb-4">{error}</p>
-                  <Button variant="outline" onClick={() => void fetchDocuments()}>
+                  <AlertCircle className="w-8 h-8 text-neo-main mb-4" />
+                  <p className="text-neo-black/70 mb-4">{error}</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => void fetchDocuments()}>
                     Retry
                   </Button>
                 </CardContent>
@@ -698,10 +854,12 @@ export default function DashboardPage() {
 
             {/* Empty state */}
             {!loading && !error && documents.length === 0 && (
-              <Card className="bg-surface-ui border-border-ui">
+              <Card className="bg-neo-white border-2 border-neo-black">
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <FileText className="w-12 h-12 text-muted-ui mb-4" />
-                  <p className="text-muted-ui">No documents yet. Upload your first document above.</p>
+                  <FileText className="w-12 h-12 text-neo-main mb-4" />
+                  <p className="text-neo-black/70">
+                    No documents yet. Upload your first document above.
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -712,14 +870,15 @@ export default function DashboardPage() {
                 {documents.map((document) => (
                   <Card
                     key={document.id}
-                    className="bg-surface-ui border-border-ui hover:border-border-strong transition-colors"
-                  >
+                    className="bg-neo-white border-2 border-neo-black hover:border-neo-main transition-colors">
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-2 flex-1 min-w-0">
                           <Checkbox
                             checked={selectedDocuments.has(document.id)}
-                            onCheckedChange={() => handleToggleSelect(document.id)}
+                            onCheckedChange={() =>
+                              handleToggleSelect(document.id)
+                            }
                             aria-label={`Select ${document.filename}`}
                             className="flex-shrink-0"
                           />
@@ -727,8 +886,7 @@ export default function DashboardPage() {
                           <button
                             onClick={() => handleOpen(document)}
                             className="text-sm truncate text-left hover:underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
-                            tabIndex={0}
-                          >
+                            tabIndex={0}>
                             {document.filename}
                           </button>
                         </div>
@@ -740,11 +898,15 @@ export default function DashboardPage() {
                     <CardContent className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-ui">Size:</span>
-                        <span className="text-text-ui">{formatFileSize(document.size_bytes)}</span>
+                        <span className="text-text-ui">
+                          {formatFileSize(document.size_bytes)}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-ui">Uploaded:</span>
-                        <span className="text-text-ui">{formatDate(document.created_at)}</span>
+                        <span className="text-text-ui">
+                          {formatDate(document.created_at)}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-ui">Type:</span>
@@ -752,43 +914,55 @@ export default function DashboardPage() {
                           {getFileTypeLabel(document.mime_type)}
                         </Badge>
                       </div>
-                      {flashcardMetadata.has(document.id) && flashcardMetadata.get(document.id)!.count > 0 && (
-                        <>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-ui">Flashcards:</span>
-                            <span className="text-text-ui">{flashcardMetadata.get(document.id)!.count} flashcards</span>
-                          </div>
-                          {(() => {
-                            const metadata = flashcardMetadata.get(document.id);
-                            const nextReview = metadata?.nextReview;
-                            if (nextReview) {
-                              return (
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="text-muted-ui">Next review:</span>
-                                  <span className="text-text-ui">
-                                    {nextReview <= new Date().toISOString()
-                                      ? 'Due now'
-                                      : formatDate(nextReview)}
-                                  </span>
-                                </div>
+                      {flashcardMetadata.has(document.id) &&
+                        flashcardMetadata.get(document.id)!.count > 0 && (
+                          <>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-ui">Flashcards:</span>
+                              <span className="text-text-ui">
+                                {flashcardMetadata.get(document.id)!.count}{" "}
+                                flashcards
+                              </span>
+                            </div>
+                            {(() => {
+                              const metadata = flashcardMetadata.get(
+                                document.id,
                               );
-                            }
-                            return null;
-                          })()}
-                        </>
-                      )}
+                              const nextReview = metadata?.nextReview;
+                              if (nextReview) {
+                                return (
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-ui">
+                                      Next review:
+                                    </span>
+                                    <span className="text-text-ui">
+                                      {nextReview <= new Date().toISOString()
+                                        ? "Due now"
+                                        : formatDate(nextReview)}
+                                    </span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </>
+                        )}
                     </CardContent>
                     <CardFooter className="flex justify-end space-x-2">
-                      {(document.status === 'extracted' || document.status === 'embedded' || document.status === 'failed') && (
+                      {(document.status === "extracted" ||
+                        document.status === "embedded" ||
+                        document.status === "failed") && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEmbed(document)}
-                          disabled={embeddingDocuments.has(document.id) || document.status === 'embedded'}
+                          disabled={
+                            embeddingDocuments.has(document.id) ||
+                            document.status === "embedded"
+                          }
                           className="text-text-ui hover:text-text-ui"
                           aria-label="Generate embeddings for AI chat"
-                          title="Generate embeddings for AI chat"
-                        >
+                          title="Generate embeddings for AI chat">
                           {embeddingDocuments.has(document.id) ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
@@ -803,12 +977,13 @@ export default function DashboardPage() {
                           onClick={() => handleViewNotes(document)}
                           className="text-primary hover:text-primary/80"
                           aria-label="View notes"
-                          title="View generated notes"
-                        >
+                          title="View generated notes">
                           <BookOpen className="w-4 h-4" />
                         </Button>
                       )}
-                      {(document.status === 'extracted' || document.status === 'embedded' || document.status === 'failed') && (
+                      {(document.status === "extracted" ||
+                        document.status === "embedded" ||
+                        document.status === "failed") && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -816,8 +991,7 @@ export default function DashboardPage() {
                           disabled={generatingNotes.has(document.id)}
                           className="text-text-ui hover:text-text-ui"
                           aria-label="Generate notes"
-                          title="Generate study notes"
-                        >
+                          title="Generate study notes">
                           {generatingNotes.has(document.id) ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
@@ -825,7 +999,9 @@ export default function DashboardPage() {
                           )}
                         </Button>
                       )}
-                      {(document.status === 'extracted' || document.status === 'embedded' || document.status === 'failed') && (
+                      {(document.status === "extracted" ||
+                        document.status === "embedded" ||
+                        document.status === "failed") && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -833,8 +1009,7 @@ export default function DashboardPage() {
                           disabled={generatingMindmaps.has(document.id)}
                           className="text-text-ui hover:text-text-ui"
                           aria-label="Generate mindmap"
-                          title="Generate mindmap"
-                        >
+                          title="Generate mindmap">
                           {generatingMindmaps.has(document.id) ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
@@ -842,19 +1017,21 @@ export default function DashboardPage() {
                           )}
                         </Button>
                       )}
-                      {flashcardMetadata.has(document.id) && flashcardMetadata.get(document.id)!.count > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewFlashcards(document)}
-                          className="text-primary hover:text-primary/80"
-                          aria-label="View flashcards"
-                          title="View flashcard library"
-                        >
-                          <GraduationCap className="w-4 h-4" />
-                        </Button>
-                      )}
-                      {(document.status === 'extracted' || document.status === 'embedded' || document.status === 'failed') && (
+                      {flashcardMetadata.has(document.id) &&
+                        flashcardMetadata.get(document.id)!.count > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewFlashcards(document)}
+                            className="text-primary hover:text-primary/80"
+                            aria-label="View flashcards"
+                            title="View flashcard library">
+                            <GraduationCap className="w-4 h-4" />
+                          </Button>
+                        )}
+                      {(document.status === "extracted" ||
+                        document.status === "embedded" ||
+                        document.status === "failed") && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -862,8 +1039,7 @@ export default function DashboardPage() {
                           disabled={generatingFlashcards.has(document.id)}
                           className="text-text-ui hover:text-text-ui"
                           aria-label="Generate flashcards"
-                          title="Generate flashcards"
-                        >
+                          title="Generate flashcards">
                           {generatingFlashcards.has(document.id) ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
@@ -877,8 +1053,7 @@ export default function DashboardPage() {
                         onClick={() => handleOpen(document)}
                         className="text-text-ui hover:text-text-ui"
                         aria-label="View document"
-                        title="View document"
-                      >
+                        title="View document">
                         <Eye className="w-4 h-4" />
                       </Button>
                       <Button
@@ -887,19 +1062,17 @@ export default function DashboardPage() {
                         onClick={() => handleDownload(document)}
                         className="text-text-ui hover:text-text-ui"
                         aria-label="Download document"
-                        title="Download document"
-                      >
+                        title="Download document">
                         <Download className="w-4 h-4" />
                       </Button>
-                      {document.status === 'embedded' && (
+                      {document.status === "embedded" && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleChat(document)}
                           className="text-text-ui hover:text-text-ui"
                           aria-label="Chat with document"
-                          title="Chat with document"
-                        >
+                          title="Chat with document">
                           <MessageSquare className="w-4 h-4" />
                         </Button>
                       )}
@@ -909,8 +1082,7 @@ export default function DashboardPage() {
                         onClick={() => handleDelete(document)}
                         className="text-muted-ui hover:text-text-ui"
                         aria-label="Delete document"
-                        title="Delete document"
-                      >
+                        title="Delete document">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </CardFooter>
@@ -923,27 +1095,27 @@ export default function DashboardPage() {
 
         {/* Delete confirmation dialog */}
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <DialogContent className="bg-surface-ui border-border-ui">
+          <DialogContent className="bg-neo-white border-4 border-neo-black">
             <DialogHeader>
               <DialogTitle>Delete Document</DialogTitle>
               <DialogDescription>
-                Are you sure you want to delete <strong>{documentToDelete?.filename}</strong>? This action cannot be undone.
+                Are you sure you want to delete{" "}
+                <strong>{documentToDelete?.filename}</strong>? This action
+                cannot be undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => setDeleteDialogOpen(false)}
-                disabled={deleting}
-              >
+                disabled={deleting}>
                 Cancel
               </Button>
               <Button
                 variant="destructive"
                 onClick={() => void confirmDelete()}
-                disabled={deleting}
-              >
-                {deleting ? 'Deleting...' : 'Delete'}
+                disabled={deleting}>
+                {deleting ? "Deleting..." : "Delete"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -951,26 +1123,26 @@ export default function DashboardPage() {
 
         {/* Notes preview dialog */}
         <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
-          <DialogContent className="bg-white dark:bg-surface-ui border-border-ui max-w-3xl">
+          <DialogContent className="bg-neo-white border-4 border-neo-black max-w-3xl">
             <DialogHeader>
-              <DialogTitle className="text-2xl text-gray-900 dark:text-text-ui">
+              <DialogTitle className="text-2xl text-neo-black">
                 📝 Study Notes Generated!
               </DialogTitle>
-              <DialogDescription className="text-gray-600 dark:text-muted-ui">
+              <DialogDescription className="text-neo-black/70">
                 AI-generated study notes from your document
               </DialogDescription>
             </DialogHeader>
             {currentNotes && (
               <div className="py-4 space-y-4">
                 {/* Notes preview */}
-                <div className="max-h-[50vh] overflow-y-auto p-4 bg-gray-50 dark:bg-black-ui border border-gray-200 dark:border-border-ui rounded-lg">
-                  <pre className="whitespace-pre-wrap text-sm text-gray-900 dark:text-text-ui font-mono leading-relaxed">
+                <div className="max-h-[50vh] overflow-y-auto p-4 bg-neo-bg border-2 border-neo-black rounded-lg">
+                  <pre className="whitespace-pre-wrap text-sm text-neo-black font-mono leading-relaxed">
                     {currentNotes.content}
                   </pre>
                 </div>
-                
+
                 {/* Info */}
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-muted-ui">
+                <div className="flex items-center justify-center gap-2 text-sm text-neo-black/60">
                   <span>📄 {currentNotes.filename}</span>
                 </div>
               </div>
@@ -980,17 +1152,18 @@ export default function DashboardPage() {
                 variant="outline"
                 size="lg"
                 onClick={() => setNotesDialogOpen(false)}
-                className="w-full sm:w-auto"
-              >
+                className="w-full sm:w-auto">
                 Close
               </Button>
               <Button
                 variant="outline"
                 size="lg"
-                onClick={() => currentNotes?.downloadUrl && window.open(currentNotes.downloadUrl, '_blank')}
+                onClick={() =>
+                  currentNotes?.downloadUrl &&
+                  window.open(currentNotes.downloadUrl, "_blank")
+                }
                 disabled={!currentNotes}
-                className="w-full sm:w-auto"
-              >
+                className="w-full sm:w-auto">
                 📥 Download Markdown
               </Button>
               <Button
@@ -998,9 +1171,12 @@ export default function DashboardPage() {
                 size="lg"
                 onClick={() => {
                   // Extract document ID from the notes context
-                  const docId = documents.find(d => 
-                    currentNotes?.filename.includes(d.id) || 
-                    currentNotes?.filename.includes(d.filename.replace(/\.[^/.]+$/, ''))
+                  const docId = documents.find(
+                    (d) =>
+                      currentNotes?.filename.includes(d.id) ||
+                      currentNotes?.filename.includes(
+                        d.filename.replace(/\.[^/.]+$/, ""),
+                      ),
                   )?.id;
                   if (docId) {
                     setNotesDialogOpen(false);
@@ -1008,8 +1184,7 @@ export default function DashboardPage() {
                   }
                 }}
                 disabled={!currentNotes}
-                className="w-full sm:w-auto bg-primary hover:bg-primary/90"
-              >
+                className="w-full sm:w-auto bg-primary hover:bg-primary/90">
                 � View Full Notes
               </Button>
             </DialogFooter>
@@ -1018,19 +1193,24 @@ export default function DashboardPage() {
 
         {/* Mindmap viewer dialog */}
         <Dialog open={mindmapDialogOpen} onOpenChange={setMindmapDialogOpen}>
-          <DialogContent className="bg-surface-ui border-border-ui max-w-6xl max-h-[90vh] overflow-hidden">
+          <DialogContent className="bg-neo-white border-4 border-neo-black max-w-6xl max-h-[90vh] overflow-hidden">
             <DialogHeader>
-              <DialogTitle>{currentMindmap?.filename || 'Generated Mindmap'}</DialogTitle>
-              <DialogDescription>Interactive mindmap visualization of your document structure.</DialogDescription>
+              <DialogTitle className="text-neo-black">
+                {currentMindmap?.filename || "Generated Mindmap"}
+              </DialogTitle>
+              <DialogDescription className="text-neo-black/70">
+                Interactive mindmap visualization of your document structure.
+              </DialogDescription>
             </DialogHeader>
             {currentMindmap && (
-              <div className="mb-4">
-                <MindmapViewer
+              <div className="mb-4 bg-neo-white">
+                <MindmapViewerUnified
                   downloadUrl={currentMindmap.downloadUrl}
                   documentName={currentMindmap.filename}
+                  format={currentMindmap.format}
                   showControls
                   allowFullscreen
-                  className="h-[600px]"
+                  className="h-[600px] bg-neo-white"
                 />
               </div>
             )}
@@ -1038,55 +1218,82 @@ export default function DashboardPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => currentMindmap?.downloadUrl && window.open(currentMindmap.downloadUrl, '_blank')}
-                disabled={!currentMindmap}
-              >
-                Download SVG
+                onClick={() =>
+                  currentMindmap?.downloadUrl &&
+                  window.open(currentMindmap.downloadUrl, "_blank")
+                }
+                disabled={!currentMindmap}>
+                Download {currentMindmap?.format?.toUpperCase() || "Mindmap"}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setMindmapDialogOpen(false)}>Close</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMindmapDialogOpen(false)}>
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Flashcards preview dialog */}
-        <Dialog open={flashcardsDialogOpen} onOpenChange={setFlashcardsDialogOpen}>
-          <DialogContent className="bg-white dark:bg-surface-ui border-border-ui max-w-xl">
+        <Dialog
+          open={flashcardsDialogOpen}
+          onOpenChange={setFlashcardsDialogOpen}>
+          <DialogContent className="bg-neo-white border-4 border-neo-black max-w-xl">
             <DialogHeader>
-              <DialogTitle className="text-2xl text-gray-900 dark:text-text-ui">
+              <DialogTitle className="text-2xl text-neo-black">
                 ✨ Flashcards Generated!
               </DialogTitle>
-              <DialogDescription className="text-gray-600 dark:text-muted-ui">
+              <DialogDescription className="text-neo-black/70">
                 {currentFlashcards?.count ? (
-                  <>Successfully generated {currentFlashcards.count} flashcard{currentFlashcards.count !== 1 ? 's' : ''} from your document</>
+                  <>
+                    Successfully generated {currentFlashcards.count} flashcard
+                    {currentFlashcards.count !== 1 ? "s" : ""} from your
+                    document
+                  </>
                 ) : (
-                  'Your flashcards are ready'
+                  "Your flashcards are ready"
                 )}
               </DialogDescription>
             </DialogHeader>
             {currentFlashcards && currentFlashcards.flashcards.length > 0 && (
               <div className="py-6 space-y-4">
                 {/* Sample flashcard preview */}
-                <div className="bg-gray-50 dark:bg-black-ui border border-gray-200 dark:border-border-ui rounded-lg p-4">
-                  <p className="text-xs text-gray-500 dark:text-muted-ui mb-2">Sample flashcard:</p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-text-ui mb-2">
+                <div className="bg-neo-bg border-2 border-neo-black rounded-lg p-4">
+                  <p className="text-xs text-neo-black/60 mb-2">
+                    Sample flashcard:
+                  </p>
+                  <p className="text-sm font-medium text-neo-black mb-2">
                     Q: {currentFlashcards.flashcards[0]?.question}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-muted-ui">
-                    A: {currentFlashcards.flashcards[0]?.answer?.substring(0, 100)}
-                    {(currentFlashcards.flashcards[0]?.answer?.length || 0) > 100 ? '...' : ''}
+                  <p className="text-sm text-neo-black/70">
+                    A:{" "}
+                    {currentFlashcards.flashcards[0]?.answer?.substring(0, 100)}
+                    {(currentFlashcards.flashcards[0]?.answer?.length || 0) >
+                    100
+                      ? "..."
+                      : ""}
                   </p>
                 </div>
 
                 {/* Stats */}
                 <div className="flex items-center justify-center gap-8 text-center py-4">
                   <div>
-                    <p className="text-3xl font-bold text-gray-900 dark:text-text-ui">{currentFlashcards.count}</p>
-                    <p className="text-xs text-gray-500 dark:text-muted-ui mt-1">Total Cards</p>
+                    <p className="text-3xl font-bold text-neo-black">
+                      {currentFlashcards.count}
+                    </p>
+                    <p className="text-xs text-neo-black/60 mt-1">
+                      Total Cards
+                    </p>
                   </div>
-                  <div className="h-12 w-px bg-gray-200 dark:bg-border-ui" />
+                  <div className="h-12 w-px bg-neo-black/20" />
                   <div>
-                    <p className="text-3xl font-bold text-gray-900 dark:text-text-ui">{currentFlashcards.count}</p>
-                    <p className="text-xs text-gray-500 dark:text-muted-ui mt-1">Ready to Review</p>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-text-ui">
+                      {currentFlashcards.count}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-muted-ui mt-1">
+                      Ready to Review
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1096,8 +1303,7 @@ export default function DashboardPage() {
                 variant="outline"
                 size="lg"
                 onClick={() => setFlashcardsDialogOpen(false)}
-                className="w-full sm:w-auto"
-              >
+                className="w-full sm:w-auto">
                 Close
               </Button>
               <Button
@@ -1107,9 +1313,11 @@ export default function DashboardPage() {
                   setFlashcardsDialogOpen(false);
                   router.push(`/flashcards/${currentFlashcards?.documentId}`);
                 }}
-                disabled={!currentFlashcards || currentFlashcards.flashcards.length === 0}
-                className="w-full sm:w-auto bg-primary hover:bg-primary/90"
-              >
+                disabled={
+                  !currentFlashcards ||
+                  currentFlashcards.flashcards.length === 0
+                }
+                className="w-full sm:w-auto bg-primary hover:bg-primary/90">
                 <GraduationCap className="w-5 h-5 mr-2" />
                 Start Practice Session
               </Button>
@@ -1118,20 +1326,26 @@ export default function DashboardPage() {
         </Dialog>
 
         {/* Synthesis result dialog */}
-        <Dialog open={synthesisDialogOpen} onOpenChange={setSynthesisDialogOpen}>
-          <DialogContent className="bg-surface-ui border-border-ui max-w-4xl max-h-[85vh] overflow-hidden">
+        <Dialog
+          open={synthesisDialogOpen}
+          onOpenChange={setSynthesisDialogOpen}>
+          <DialogContent className="bg-neo-white border-4 border-neo-black max-w-4xl max-h-[85vh] overflow-hidden">
             <DialogHeader>
-              <DialogTitle className="text-text-ui">
-                {synthesisResult?.type === 'summary' ? 'Unified Summary' : 'Comparative Analysis'}
+              <DialogTitle className="text-neo-black">
+                {synthesisResult?.type === "summary"
+                  ? "Unified Summary"
+                  : "Comparative Analysis"}
               </DialogTitle>
-              <DialogDescription className="text-muted-ui">
-                AI-generated synthesis from {synthesisResult?.sources.length || 0} documents with source attribution
+              <DialogDescription className="text-neo-black/70">
+                AI-generated synthesis from{" "}
+                {synthesisResult?.sources.length || 0} documents with source
+                attribution
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               {/* Markdown preview */}
-              <div className="max-h-[50vh] overflow-y-auto p-4 bg-black-ui border border-border-ui rounded-lg">
-                <pre className="whitespace-pre-wrap text-sm text-text-ui font-mono">
+              <div className="max-h-[50vh] overflow-y-auto p-4 bg-neo-bg border-2 border-neo-black rounded-lg">
+                <pre className="whitespace-pre-wrap text-sm text-neo-black font-mono">
                   {synthesisResult?.markdown}
                 </pre>
               </div>
@@ -1139,15 +1353,23 @@ export default function DashboardPage() {
               {/* Sources section */}
               {synthesisResult && synthesisResult.sources.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-text-ui mb-2">Sources</h3>
+                  <h3 className="text-lg font-semibold text-neo-black mb-2">
+                    Sources
+                  </h3>
                   <div className="space-y-2">
                     {synthesisResult.sources.map((source) => (
-                      <Card key={source.document_id} className="bg-black-ui/30 border-border-ui">
+                      <Card
+                        key={source.document_id}
+                        className="bg-neo-bg border-2 border-neo-black">
                         <CardContent className="p-3">
-                          <p className="text-sm font-semibold text-text-ui mb-1">{source.filename}</p>
+                          <p className="text-sm font-semibold text-neo-black mb-1">
+                            {source.filename}
+                          </p>
                           <ul className="list-disc list-inside space-y-1">
                             {source.key_points.map((point, idx) => (
-                              <li key={idx} className="text-xs text-muted-ui">{point}</li>
+                              <li key={idx} className="text-xs text-neo-black/70">
+                                {point}
+                              </li>
                             ))}
                           </ul>
                         </CardContent>
@@ -1158,11 +1380,17 @@ export default function DashboardPage() {
               )}
             </div>
             <DialogFooter>
-              <Button variant="default" size="sm" onClick={handleDownloadSynthesis}>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleDownloadSynthesis}>
                 <Download className="w-4 h-4 mr-2" />
                 Download
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setSynthesisDialogOpen(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSynthesisDialogOpen(false)}>
                 Close
               </Button>
             </DialogFooter>

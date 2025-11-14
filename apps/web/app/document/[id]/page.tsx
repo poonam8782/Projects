@@ -53,7 +53,7 @@ export default function DocumentDetailPage() {
 
   return (
     <ProtectedRoute>
-      <main className="min-h-screen p-8 bg-black-ui text-text-ui">
+      <main className="min-h-screen p-8 bg-neo-bg text-neo-black">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <Button variant="ghost" onClick={handleBackToDashboard} aria-label="Navigate back to dashboard">
@@ -63,20 +63,20 @@ export default function DocumentDetailPage() {
 
         {/* Loading */}
         {loading && (
-          <Card className="bg-surface-ui border-border-ui">
+          <Card className="bg-neo-white border-2 border-neo-black">
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-muted-ui animate-spin mb-4" />
-              <p className="text-muted-ui">Loading document...</p>
+              <Loader2 className="w-8 h-8 text-neo-main animate-spin mb-4" />
+              <p className="text-neo-black/70">Loading document...</p>
             </CardContent>
           </Card>
         )}
 
         {/* Error */}
         {error && !loading && (
-          <Card className="bg-surface-ui border-border-ui">
+          <Card className="bg-neo-white border-2 border-neo-black">
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <AlertCircle className="w-8 h-8 text-muted-ui mb-4" />
-              <p className="text-muted-ui mb-4">{error}</p>
+              <AlertCircle className="w-8 h-8 text-neo-main mb-4" />
+              <p className="text-neo-black/70 mb-4">{error}</p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => void fetchDocument()}>Retry</Button>
                 <Button variant="outline" onClick={handleBackToDashboard}>Back to Dashboard</Button>
@@ -90,7 +90,7 @@ export default function DocumentDetailPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left: metadata */}
             <section className="lg:col-span-1">
-              <Card className="bg-surface-ui border-border-ui">
+              <Card className="bg-neo-white border-2 border-neo-black">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
@@ -115,8 +115,8 @@ export default function DocumentDetailPage() {
               {document.status === "embedded" ? (
                 <DocumentChat documentId={documentId} documentName={document.filename} />
               ) : (
-                <Card className="bg-surface-ui border-border-ui">
-                  <CardContent className="py-8 text-center text-muted-ui">
+                <Card className="bg-neo-white border-2 border-neo-black">
+                  <CardContent className="py-8 text-center text-neo-black/70">
                     This document must be embedded before you can chat with it.
                     <div className="mt-4">
                       <Button variant="outline" onClick={handleBackToDashboard}>Back to Dashboard</Button>

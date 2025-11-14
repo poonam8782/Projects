@@ -44,11 +44,11 @@ create table if not exists public.embeddings (
   document_id uuid not null references public.documents(id) on delete cascade,
   chunk_index int not null,
   chunk_text text not null,
-  embedding vector(1536) not null,
+  embedding vector(768) not null,
   token_count int,
   created_at timestamptz not null default now()
 );
-comment on table public.embeddings is 'Text chunks with 1536-dim embeddings for RAG';
+comment on table public.embeddings is 'Text chunks with 768-dim embeddings for RAG';
 create index if not exists idx_embeddings_vector on public.embeddings using ivfflat (embedding vector_cosine_ops) with (lists = 100);
 create unique index if not exists idx_embeddings_unique_chunk on public.embeddings(document_id, chunk_index);
 
@@ -235,7 +235,7 @@ create policy "Users can delete own processed files" on storage.objects
 -- ============================================================================
 
 create or replace function match_embeddings(
-  query_embedding vector(1536),
+  query_embedding vector(768),
   match_threshold float default 0.7,
   match_count int default 5,
   filter_document_id uuid default null

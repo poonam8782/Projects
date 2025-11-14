@@ -170,9 +170,9 @@ export default function Flashcards({
           </div>
 
           {/* Progress bar */}
-          <div className="w-full h-2 bg-muted border border-border rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-neo-bg border-2 border-neo-black rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-primary"
+              className="h-full bg-neo-main"
               initial={{ width: 0 }}
               animate={{ width: `${progressPercentage}%` }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -207,7 +207,7 @@ export default function Flashcards({
               transition={{ duration: 0.3 }}
               className="flex flex-col items-center justify-center py-12 space-y-6"
             >
-              <CheckCircle className="w-16 h-16 text-primary" />
+              <CheckCircle className="w-16 h-16 text-neo-accent" />
               <div className="text-center space-y-2">
                 <h3 className="text-xl font-semibold">
                   {reviewedCount === 0 ? 'No flashcards due right now' : 'All flashcards reviewed!'}
@@ -251,7 +251,7 @@ export default function Flashcards({
                 >
                   {/* Front side - Question */}
                   <div
-                    className="absolute inset-0 bg-card border-2 border-border rounded-lg p-8 min-h-[300px] flex flex-col items-center justify-center cursor-pointer"
+                    className="absolute inset-0 bg-neo-white border-4 border-neo-black rounded-lg p-8 min-h-[300px] flex flex-col items-center justify-center cursor-pointer"
                     style={{
                       backfaceVisibility: 'hidden',
                       transform: 'rotateY(0deg)'
@@ -263,16 +263,16 @@ export default function Flashcards({
                     aria-label="Flashcard - Click to reveal answer"
                   >
                     <div className="text-center space-y-4">
-                      <p className="text-xl font-semibold text-card-foreground">
+                      <p className="text-xl font-semibold text-neo-black">
                         {currentFlashcard.question}
                       </p>
-                      <p className="text-sm text-muted-foreground">Click to reveal answer</p>
+                      <p className="text-sm text-neo-black/70">Click to reveal answer</p>
                     </div>
                   </div>
 
                   {/* Back side - Answer */}
                   <div
-                    className="absolute inset-0 bg-card border-2 border-border rounded-lg p-8 min-h-[300px] flex flex-col items-center justify-center cursor-pointer"
+                    className="absolute inset-0 bg-neo-white border-4 border-neo-black rounded-lg p-8 min-h-[300px] flex flex-col items-center justify-center cursor-pointer"
                     style={{
                       backfaceVisibility: 'hidden',
                       transform: 'rotateY(180deg)'
@@ -284,10 +284,10 @@ export default function Flashcards({
                     aria-label="Flashcard answer - Click to flip back to question"
                   >
                     <div className="text-center space-y-4 w-full">
-                      <p className="text-lg text-card-foreground">
+                      <p className="text-lg text-neo-black">
                         {currentFlashcard.answer}
                       </p>
-                      <p className="text-sm text-muted-foreground">Rate your recall</p>
+                      <p className="text-sm text-neo-black/70">Rate your recall</p>
                     </div>
                   </div>
                 </motion.div>

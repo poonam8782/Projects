@@ -181,7 +181,7 @@ async def chat_with_document(
         query_embedding = generate_embedding(
             request.query,
             task_type="RETRIEVAL_QUERY",
-            dimensions=1536,
+            dimensions=768,
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("Failed to embed query for document %s: %s", document_id, exc, exc_info=True)

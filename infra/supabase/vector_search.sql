@@ -1,7 +1,7 @@
 -- Sprint 3: Add match_embeddings RPC function for cosine similarity search used by the RAG chat endpoint.
 
 CREATE OR REPLACE FUNCTION public.match_embeddings(
-    query_embedding vector(1536),
+    query_embedding vector(768),
     target_document_id uuid,
     match_count int DEFAULT 5,
     similarity_threshold float DEFAULT 0.0
@@ -35,7 +35,7 @@ $$;
 
 -- Example: Find top 5 most similar chunks for a query embedding
 -- SELECT * FROM match_embeddings(
---   '[0.1, 0.2, ..., 0.0]'::vector(1536),  -- query embedding
+--   '[0.1, 0.2, ..., 0.0]'::vector(768),  -- query embedding
 --   'doc-uuid'::uuid,                      -- document to search within
 --   5,                                     -- top 5 results
 --   0.3                                    -- minimum similarity threshold

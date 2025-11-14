@@ -69,11 +69,11 @@ def sample_chunks():
 
 @pytest.fixture
 def sample_embeddings():
-    """Return a list of 3 embedding vectors (1536 dimensions each)."""
+    """Return a list of 3 embedding vectors (768 dimensions each)."""
     return [
-        [0.1] * 1536,
-        [0.2] * 1536,
-        [0.3] * 1536
+        [0.1] * 768,
+        [0.2] * 768,
+        [0.3] * 768
     ]
 
 
@@ -430,7 +430,7 @@ class TestEmbedErrorHandling:
         
         mock_chunker.return_value = sample_chunks  # 3 chunks
         # Return only 2 embeddings - mismatch!
-        mock_gemini.return_value = [[0.1] * 1536, [0.2] * 1536]
+        mock_gemini.return_value = [[0.1] * 768, [0.2] * 768]
         
         # Action
         response = client.post(f"/embed?document_id={sample_document['id']}")
@@ -539,7 +539,7 @@ def test_embed_various_chunk_counts(
         mock_supabase_instance.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock(data=[{}])
         
         chunks = [f"Chunk {i}" for i in range(chunk_count)]
-        embeddings = [[0.1] * 1536 for _ in range(chunk_count)]
+        embeddings = [[0.1] * 768 for _ in range(chunk_count)]
         
         with patch('app.routes.embed.chunk_text', return_value=chunks):
             with patch('app.routes.embed.generate_embeddings_batch', return_value=embeddings):

@@ -456,21 +456,28 @@ export async function getNotes(documentId: string): Promise<GetNotesResponse | n
 }
 
 /**
- * Generates a mindmap (sanitized SVG) for a document via backend.
+ * Generates a mindmap for a document via backend.
+ * Supports multiple formats: svg, mermaid (default), markmap
  * Returns metadata including preview and signed URL.
  */
-export async function generateMindmap(documentId: string): Promise<GenerateMindmapResponse> {
+export async function generateMindmap(
+  documentId: string,
+  format: 'svg' | 'mermaid' | 'markmap' = 'mermaid'
+): Promise<GenerateMindmapResponse> {
   const token = await getAuthToken();
   if (!token) {
     throw new Error('Not authenticated');
   }
   try {
-    const response = await fetch(`${API_BASE_URL}/generate/mindmap?document_id=${documentId}` , {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/generate/mindmap?document_id=${documentId}&format=${format}`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }
+    );
     if (!response.ok) {
       await handleApiError(response);
     }

@@ -73,7 +73,7 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-8 bg-background">
+    <main className="min-h-screen flex items-center justify-center p-8 bg-neo-bg">
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center mb-8">
           <Image src="/favicon.svg" alt="Neura Logo" width={80} height={80} />

@@ -187,15 +187,17 @@ class GetNotesResponse(BaseModel):
 class GenerateMindmapResponse(BaseModel):
     """Response schema for mindmap generation endpoint (Sprint 4).
 
-    Provides metadata about an AI-generated SVG mindmap derived from a document's
-    extracted text. Includes a short preview and a signed download URL.
+    Provides metadata about an AI-generated mindmap derived from a document's
+    extracted text. Supports multiple formats: SVG, Mermaid, and Markmap.
+    Includes content preview and a signed download URL.
     """
 
     document_id: UUID
     filename: str
     storage_path: str
     download_url: str
-    svg_preview: Optional[str] = None
+    format: str  # "svg", "mermaid", or "markmap"
+    content_preview: Optional[str] = None
     size_bytes: int
     node_count: Optional[int] = None
     status: str

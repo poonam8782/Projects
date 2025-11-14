@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     gemini_chat_model: str = Field(default="gemini-2.5-pro", alias="GEMINI_CHAT_MODEL")
     # Global default cap for model output tokens; endpoints can override
     gemini_max_output_tokens: int = Field(default=8192, alias="GEMINI_MAX_OUTPUT_TOKENS")
+    # Embedding model and dimensionality
+    gemini_embedding_model: str = Field(default="models/embedding-001", alias="GEMINI_EMBEDDING_MODEL")
+    gemini_embedding_dimensions: int = Field(default=768, alias="GEMINI_EMBEDDING_DIMENSIONS")
+    # Flag to indicate if using a paid Gemini key to relax rate limits/delays
+    gemini_paid: bool = Field(default=False, alias="GEMINI_PAID")
     cors_origins: Union[List[str], str] = Field(default="http://localhost:3000")
     backend_url: str = Field(default="http://localhost:8000", alias="BACKEND_URL")
 

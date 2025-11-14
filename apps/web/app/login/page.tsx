@@ -58,7 +58,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-8 bg-background">
+    <main className="min-h-screen flex items-center justify-center p-8 bg-neo-bg">
       <Card className="w-full max-w-md">
         <CardHeader className="px-8 pt-8">
           <CardTitle className="text-2xl font-semibold">Sign In</CardTitle>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { MindmapViewer } from '@/components/MindmapViewer';
+import MindmapViewerUnified from '@/components/MindmapViewerUnified';
 import { notFound } from 'next/navigation';
 
 interface MindmapPageProps {
@@ -24,7 +24,7 @@ export default function MindmapPage({ params }: MindmapPageProps) {
         >Back to Document</a>
       </header>
       <main className="flex-1 overflow-hidden">
-        <MindmapViewer documentId={documentId} documentName={documentId} showControls allowFullscreen bare />
+        <MindmapViewerUnified documentId={documentId} documentName={documentId} showControls allowFullscreen bare />
       </main>
     </div>
   );

@@ -2,19 +2,23 @@
 Gemini AI Embedding Generation Service
 
 This module provides Gemini AI embedding generation for document chunks and user queries.
-It uses the google-generativeai SDK with the models/embedding-001 model configured for
-1536-dimensional vectors. The client handles API errors, rate limiting with exponential
-backoff, and provides both single and batch embedding generation.
+It uses the google-generativeai SDK with the models/embedding-001 model which produces
+768-dimensional vectors (fixed output). The client handles API errors, rate limiting with 
+exponential backoff, and provides both single and batch embedding generation.
 
 Key features:
-- Generates embeddings using Gemini's embedding-001 model
-- Supports configurable dimensions (default: 1536)
+- Generates embeddings using Gemini's embedding-001 model (768 dimensions, fixed)
+- Compatible with other embedding models that support variable dimensions
 - Handles rate limiting with exponential backoff
 - Provides both single and batch embedding generation
 - Comprehensive error handling and logging
+
+Note: embedding-001 produces fixed 768-dimensional embeddings and does not accept
+the output_dimensionality parameter.
 """
 
 import logging
+import re
 import time
 from typing import Iterator, List, Optional, TypedDict
 
@@ -27,15 +31,27 @@ from app.core.config import get_settings
 logger = logging.getLogger(__name__)
 
 # Constants
-DEFAULT_MODEL = "models/embedding-001"  # Recommended Gemini embedding model
-DEFAULT_DIMENSIONS = 1536  # Target embedding dimensions (user requirement)
-MAX_RETRIES = 5  # Maximum retry attempts for rate limiting (increased for free tier)
-INITIAL_RETRY_DELAY = 2.0  # Initial delay in seconds for exponential backoff (increased from 1.0)
-MAX_RETRY_DELAY = 120.0  # Maximum delay between retries (increased from 60.0)
-BATCH_DELAY = 4.5  # Delay between embedding requests to stay under free tier limit (15/min = 4s spacing)
-DEFAULT_CHAT_MODEL = get_settings().gemini_chat_model  # Configurable via env (defaults to gemini-2.5-pro)
+# Read settings (lazy) to allow runtime overrides in tests
+_settings = get_settings()
+
+DEFAULT_MODEL = _settings.gemini_embedding_model or "models/embedding-001"
+DEFAULT_DIMENSIONS = _settings.gemini_embedding_dimensions or 768
+
+# Adjust retry/backoff based on whether a paid key is configured
+if _settings.gemini_paid:
+    MAX_RETRIES = 3
+    INITIAL_RETRY_DELAY = 0.5
+    MAX_RETRY_DELAY = 30.0
+    BATCH_DELAY = 0.1  # small spacing for paid tier
+else:
+    MAX_RETRIES = 5
+    INITIAL_RETRY_DELAY = 2.0
+    MAX_RETRY_DELAY = 120.0
+    BATCH_DELAY = 4.5  # conservative spacing for free tier
+
+DEFAULT_CHAT_MODEL = _settings.gemini_chat_model  # Configurable via env (defaults to gemini-2.5-pro)
 CHAT_TEMPERATURE = 0.7  # Balanced creativity
-MAX_OUTPUT_TOKENS = get_settings().gemini_max_output_tokens  # Can be overridden per call
+MAX_OUTPUT_TOKENS = _settings.gemini_max_output_tokens  # Can be overridden per call
 
 
 class ChatHistoryEntry(TypedDict):
@@ -111,10 +127,11 @@ def generate_embedding(
         task_type: Either "RETRIEVAL_DOCUMENT" (for document chunks) or 
                    "RETRIEVAL_QUERY" (for user queries). Affects embedding optimization.
         model: Gemini model name (default: models/embedding-001)
-        dimensions: Output dimensionality (default: 1536, max: 3072)
+        dimensions: Output dimensionality (default: 768). Note: embedding-001 has fixed
+                   768 dimensions and ignores this parameter. Used for validation only.
     
     Returns:
-        List of floats representing the embedding vector
+        List of floats representing the embedding vector (768 dimensions for embedding-001)
     
     Raises:
         ValueError: If input is invalid (empty text, invalid task_type, invalid dimensions)
@@ -145,12 +162,20 @@ def generate_embedding(
     while retry_count <= MAX_RETRIES:
         try:
             # Call Gemini API
-            response = genai.embed_content(
-                model=model,
-                content=text,
-                task_type=task_type,
-                output_dimensionality=dimensions
-            )
+            # Note: embedding-001 has fixed 768 dimensions and doesn't accept output_dimensionality
+            # Only pass output_dimensionality for models that support it
+            api_params = {
+                "model": model,
+                "content": text,
+                "task_type": task_type
+            }
+            
+            # Only add output_dimensionality for models that support variable dimensions
+            # embedding-001 has fixed 768 dimensions
+            if model != "models/embedding-001":
+                api_params["output_dimensionality"] = dimensions
+            
+            response = genai.embed_content(**api_params)
             
             # Extract embedding from response
             raw = response.get('embedding')
@@ -223,7 +248,7 @@ def generate_embeddings_batch(
         texts: List of input strings to generate embeddings for
         task_type: Either "RETRIEVAL_DOCUMENT" or "RETRIEVAL_QUERY"
         model: Gemini model name (default: models/embedding-001)
-        dimensions: Output dimensionality (default: 1536)
+        dimensions: Output dimensionality (default: 768)
     
     Returns:
         List of embedding vectors (List[List[float]])
@@ -271,10 +296,10 @@ def get_embedding_dimensions(model: str = DEFAULT_MODEL) -> int:
         model: Gemini model name (default: models/embedding-001)
     
     Returns:
-        Default embedding dimensions (1536)
+        Default embedding dimensions (768)
     
     Note:
-        Currently returns DEFAULT_DIMENSIONS (1536) for all models.
+        Currently returns DEFAULT_DIMENSIONS (768) for all models.
         Can be extended to support model-specific dimensions in the future.
     """
     return DEFAULT_DIMENSIONS
@@ -629,6 +654,230 @@ def generate_mindmap(
 
         logger.error("Failed to generate mindmap: %s", message, exc_info=True)
         raise RuntimeError(f"Failed to generate mindmap: {message}") from exc
+
+
+def generate_mermaid_mindmap(
+    text: str,
+    model: str = DEFAULT_CHAT_MODEL,
+    temperature: float = 0.3,
+    max_output_tokens: int = 4096,
+) -> str:
+    """Generate Mermaid.js mindmap syntax from document text using Gemini.
+
+    Mermaid mindmaps use indentation-based syntax and are highly interactive.
+
+    Args:
+        text: Full extracted document text to visualize as a mindmap.
+        model: Gemini model name (default: gemini-1.5-flash for speed).
+        temperature: Lower temperature (default 0.3) for consistent structure.
+        max_output_tokens: Upper bound on output length (default 4096).
+
+    Returns:
+        Mermaid mindmap syntax string (plain text).
+
+    Raises:
+        ValueError: If input text is empty.
+        RuntimeError: If Gemini API call fails.
+    """
+    if not text or not text.strip():
+        raise ValueError("Text cannot be empty for mindmap generation")
+
+    _initialize_gemini_client()
+
+    prompt = (
+        "Create a Mermaid.js mindmap from this document. Follow the EXACT syntax rules below.\n\n"
+        "CRITICAL SYNTAX RULES:\n"
+        "1. First line: 'mindmap' (no indentation)\n"
+        "2. Second line: '  root((Main Topic))' (2 spaces indent, use double parentheses)\n"
+        "3. Main branches: 4 spaces indent, plain text (no symbols)\n"
+        "4. Sub-branches: 6 spaces indent, plain text\n"
+        "5. NO special characters in labels except letters, numbers, spaces, and hyphens\n"
+        "6. NO colons, parentheses, or special symbols in node text\n"
+        "7. Keep labels SHORT (2-4 words maximum)\n\n"
+        "CORRECT EXAMPLE:\n"
+        "mindmap\n"
+        "  root((Programming))\n"
+        "    Variables\n"
+        "      Declaration\n"
+        "      Assignment\n"
+        "    Functions\n"
+        "      Parameters\n"
+        "      Return Values\n"
+        "    Loops\n"
+        "      For Loop\n"
+        "      While Loop\n\n"
+        "WRONG - Do NOT do this:\n"
+        "mindmap\n"
+        "  root((Programming Assignments)) ::icon(fa fa-code)  <- NO ICONS\n"
+        "    Variables: Declaration  <- NO COLONS\n\n"
+        "Generate a mindmap with:\n"
+        "- 1 root node with main topic in double parentheses\n"
+        "- 5-7 main branches (4 space indent)\n"
+        "- 2-4 sub-branches per main branch (6 space indent)\n"
+        "- Simple, clear labels\n\n"
+        "Output ONLY the mindmap syntax. NO markdown fences, NO explanations.\n\n"
+        "Document:\n" + text.strip()[:3000]  # Limit text to prevent overwhelming
+    )
+
+    generation_config = {
+        "temperature": temperature,
+        "max_output_tokens": max_output_tokens or MAX_OUTPUT_TOKENS,
+        "top_p": 0.95,
+        "top_k": 40,
+    }
+
+    logger.info(
+        "Generating Mermaid mindmap via Gemini",
+        extra={"model": model, "text_chars": len(text)},
+    )
+
+    try:
+        model_instance: GenerativeModel = genai.GenerativeModel(
+            model_name=model,
+            generation_config=generation_config,
+        )
+        response = model_instance.generate_content(prompt)
+
+        mermaid_syntax = getattr(response, "text", None)
+        if not mermaid_syntax or not mermaid_syntax.strip():
+            logger.error("Gemini returned empty Mermaid mindmap content")
+            raise RuntimeError("Empty Mermaid mindmap generated")
+
+        # Strip markdown code fences if present
+        cleaned = mermaid_syntax.strip()
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r"^```(?:mermaid)?\s*", "", cleaned)
+            cleaned = re.sub(r"```\s*$", "", cleaned)
+            cleaned = cleaned.strip()
+
+        # Validate mermaid syntax
+        if not cleaned.startswith("mindmap"):
+            logger.warning("Generated content may not be valid Mermaid mindmap syntax")
+
+        logger.info("Mermaid mindmap generation completed", extra={"chars": len(cleaned)})
+        return cleaned
+
+    except Exception as exc:  # noqa: BLE001
+        message = str(exc)
+        lower_message = message.lower()
+
+        if any(keyword in lower_message for keyword in ("429", "quota", "rate limit")):
+            logger.warning("Gemini API rate limit during Mermaid mindmap generation: %s", message)
+            raise RuntimeError("Gemini API rate limit exceeded") from exc
+
+        if "api key" in lower_message or "authentication" in lower_message:
+            logger.error("Gemini API authentication error: %s", message)
+            raise RuntimeError("Invalid Gemini API key") from exc
+
+        logger.error("Failed to generate Mermaid mindmap: %s", message, exc_info=True)
+        raise RuntimeError(f"Failed to generate Mermaid mindmap: {message}") from exc
+
+
+def generate_markmap(
+    text: str,
+    model: str = DEFAULT_CHAT_MODEL,
+    temperature: float = 0.3,
+    max_output_tokens: int = 4096,
+) -> str:
+    """Generate Markmap markdown from document text using Gemini.
+
+    Markmap uses standard markdown headings to create interactive mindmaps.
+
+    Args:
+        text: Full extracted document text to visualize as a mindmap.
+        model: Gemini model name (default: gemini-1.5-flash for speed).
+        temperature: Lower temperature (default 0.3) for consistent structure.
+        max_output_tokens: Upper bound on output length (default 4096).
+
+    Returns:
+        Markdown string with heading hierarchy.
+
+    Raises:
+        ValueError: If input text is empty.
+        RuntimeError: If Gemini API call fails.
+    """
+    if not text or not text.strip():
+        raise ValueError("Text cannot be empty for mindmap generation")
+
+    _initialize_gemini_client()
+
+    prompt = (
+        "Analyze the following document and create a hierarchical mindmap structure using markdown headings. "
+        "Follow these rules:\n\n"
+        "1. Use # for the root/main topic (only ONE # heading)\n"
+        "2. Use ## for main branches (5-8 branches)\n"
+        "3. Use ### for sub-topics (2-5 per branch)\n"
+        "4. Use #### for detailed points if needed\n"
+        "5. Keep headings concise and clear (2-8 words)\n"
+        "6. Use **bold** and *italic* for emphasis where appropriate\n"
+        "7. Add bullet points under headings for additional details\n\n"
+        "EXAMPLE FORMAT:\n"
+        "# Main Topic\n\n"
+        "## Branch 1\n"
+        "### Subtopic A\n"
+        "- Key point 1\n"
+        "- Key point 2\n\n"
+        "### Subtopic B\n"
+        "- Detail 1\n\n"
+        "## Branch 2\n"
+        "### Subtopic C\n\n"
+        "Do NOT include markdown code fences or explanations. "
+        "Output ONLY the markdown content.\n\n"
+        "Document text:\n" + text.strip()
+    )
+
+    generation_config = {
+        "temperature": temperature,
+        "max_output_tokens": max_output_tokens or MAX_OUTPUT_TOKENS,
+        "top_p": 0.95,
+        "top_k": 40,
+    }
+
+    logger.info(
+        "Generating Markmap markdown via Gemini",
+        extra={"model": model, "text_chars": len(text)},
+    )
+
+    try:
+        model_instance: GenerativeModel = genai.GenerativeModel(
+            model_name=model,
+            generation_config=generation_config,
+        )
+        response = model_instance.generate_content(prompt)
+
+        markdown = getattr(response, "text", None)
+        if not markdown or not markdown.strip():
+            logger.error("Gemini returned empty Markmap markdown content")
+            raise RuntimeError("Empty Markmap markdown generated")
+
+        # Strip markdown code fences if present
+        cleaned = markdown.strip()
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r"^```(?:markdown|md)?\s*", "", cleaned)
+            cleaned = re.sub(r"```\s*$", "", cleaned)
+            cleaned = cleaned.strip()
+
+        # Validate markdown has headings
+        if not re.search(r"^#{1,6}\s+.+$", cleaned, re.MULTILINE):
+            logger.warning("Generated content may not contain markdown headings")
+
+        logger.info("Markmap markdown generation completed", extra={"chars": len(cleaned)})
+        return cleaned
+
+    except Exception as exc:  # noqa: BLE001
+        message = str(exc)
+        lower_message = message.lower()
+
+        if any(keyword in lower_message for keyword in ("429", "quota", "rate limit")):
+            logger.warning("Gemini API rate limit during Markmap generation: %s", message)
+            raise RuntimeError("Gemini API rate limit exceeded") from exc
+
+        if "api key" in lower_message or "authentication" in lower_message:
+            logger.error("Gemini API authentication error: %s", message)
+            raise RuntimeError("Invalid Gemini API key") from exc
+
+        logger.error("Failed to generate Markmap markdown: %s", message, exc_info=True)
+        raise RuntimeError(f"Failed to generate Markmap markdown: {message}") from exc
 
 
 def generate_flashcards(

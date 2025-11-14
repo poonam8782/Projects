@@ -78,7 +78,7 @@ def supabase_mock():
 @pytest.fixture
 def mock_generate_embedding():
     with patch("app.routes.chat.generate_embedding") as mock:
-        mock.return_value = [0.1] * 1536
+        mock.return_value = [0.1] * 768
         yield mock
 
 

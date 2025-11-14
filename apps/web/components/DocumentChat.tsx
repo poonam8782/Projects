@@ -154,7 +154,7 @@ export default function DocumentChat({ documentId, documentName, className }: Do
         regex.test(part) ? (
           <mark
             key={idx}
-            className="bg-white/10 text-text-ui px-0.5 rounded"
+            className="bg-neo-accent/30 text-neo-black px-0.5 rounded"
           >
             {part}
           </mark>
@@ -167,7 +167,7 @@ export default function DocumentChat({ documentId, documentName, className }: Do
   )
 
   return (
-    <Card className={cn('bg-surface-ui border-border-ui', className)}>
+    <Card className={cn('bg-neo-white border-2 border-neo-black', className)}>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle className="flex items-center gap-2">
@@ -184,7 +184,7 @@ export default function DocumentChat({ documentId, documentName, className }: Do
         <div className="max-h-[500px] overflow-y-auto space-y-4 pb-4">
           {/* Empty state */}
           {messages.length === 0 && !isStreaming && (
-            <div className="flex flex-col items-center justify-center py-8 text-muted-ui">
+            <div className="flex flex-col items-center justify-center py-8 text-neo-black/70">
               <MessageSquare className="w-8 h-8 mb-2" />
               <p>Start a conversation by asking a question about this document.</p>
             </div>
@@ -197,10 +197,10 @@ export default function DocumentChat({ documentId, documentName, className }: Do
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
               className={cn(
-                'rounded-lg p-3 max-w-[80%] border border-border-ui',
+                'rounded-lg p-3 max-w-[80%] border-2 border-neo-black',
                 m.role === 'user'
-                  ? 'ml-auto bg-black-ui text-text-ui text-sm'
-                  : 'mr-auto bg-surface-ui text-muted-ui text-sm'
+                  ? 'ml-auto bg-neo-accent text-neo-black text-sm'
+                  : 'mr-auto bg-neo-bg text-neo-black text-sm'
               )}
             >
               {m.content}
@@ -216,10 +216,10 @@ export default function DocumentChat({ documentId, documentName, className }: Do
                 exit={{ opacity: 0, y: 10 }}
                 transition={{ duration: 0.2 }}
                 aria-live="polite"
-                className="mr-auto rounded-lg p-3 max-w-[80%] bg-surface-ui border border-border-ui text-muted-ui text-sm"
+                className="mr-auto rounded-lg p-3 max-w-[80%] bg-neo-bg border-2 border-neo-black text-neo-black text-sm"
               >
                 {streamingMessage}
-                <span className="inline-block w-2 h-4 ml-1 align-baseline bg-text-ui animate-pulse" />
+                <span className="inline-block w-2 h-4 ml-1 align-baseline bg-neo-black animate-pulse" />
               </motion.div>
             )}
           </AnimatePresence>
@@ -229,9 +229,9 @@ export default function DocumentChat({ documentId, documentName, className }: Do
 
         {/* Provenance panel */}
         {provenance.length > 0 && (
-          <div className="mt-2 border-t border-border-ui pt-2">
+          <div className="mt-2 border-t-2 border-neo-black pt-2">
             <button
-              className="flex items-center gap-2 text-sm text-muted-ui hover:text-text-ui focus:outline-none"
+              className="flex items-center gap-2 text-sm text-neo-black/70 hover:text-neo-black focus:outline-none"
               onClick={toggleProvenance}
               aria-expanded={showProvenance}
               aria-controls="provenance-panel"
@@ -250,9 +250,9 @@ export default function DocumentChat({ documentId, documentName, className }: Do
                   className="mt-2"
                 >
                   {provenance.map((c) => (
-                    <div key={`${c.chunk_id}-${c.chunk_index}`} className="bg-black-ui/30 border border-border-ui rounded p-3 mb-2">
-                      <div className="text-xs text-muted-ui mb-1">Chunk {c.chunk_index} • {c.similarity.toFixed(2)} similarity</div>
-                      <div className="text-sm text-muted-ui whitespace-pre-wrap">
+                    <div key={`${c.chunk_id}-${c.chunk_index}`} className="bg-neo-bg border-2 border-neo-black rounded p-3 mb-2">
+                      <div className="text-xs text-neo-black/70 mb-1">Chunk {c.chunk_index} • {c.similarity.toFixed(2)} similarity</div>
+                      <div className="text-sm text-neo-black whitespace-pre-wrap">
                         {c.chunk_text.length > 200 
                           ? highlightNodes(`${c.chunk_text.slice(0, 200)}…`)
                           : highlightNodes(c.chunk_text)}
@@ -267,7 +267,7 @@ export default function DocumentChat({ documentId, documentName, className }: Do
 
         {/* Input area */}
         <form
-          className="mt-4 pt-4 border-t border-border-ui flex items-end gap-2"
+          className="mt-4 pt-4 border-t-2 border-neo-black flex items-end gap-2"
           onSubmit={(e) => {
             e.preventDefault()
             void handleSendMessage()
@@ -278,7 +278,7 @@ export default function DocumentChat({ documentId, documentName, className }: Do
             onChange={(e) => setCurrentQuery(e.target.value)}
             placeholder="Ask a question about this document..."
             disabled={isStreaming}
-            className="flex-1 bg-black-ui border-border-ui text-text-ui"
+            className="flex-1 bg-neo-bg border-2 border-neo-black text-neo-black"
             aria-label="Your message"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -307,7 +307,7 @@ export default function DocumentChat({ documentId, documentName, className }: Do
 
         {/* Error state */}
         {error && (
-          <div className="mt-3 bg-black-ui/30 border border-border-ui rounded p-3 text-muted-ui text-sm">
+          <div className="mt-3 bg-neo-bg border-2 border-neo-main rounded p-3 text-neo-black text-sm">
             {error}
           </div>
         )}

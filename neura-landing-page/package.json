@@ -1,0 +1,29 @@
+To create a new landing page project using the provided HTML design without any changes, follow these steps:
+
+### Step 1: Set Up the Project Structure
+1. **Create a new directory** for your project. You can name it something like `neura-landing-page`.
+2. **Inside this directory**, create an `index.html` file where you will place the provided HTML code.
+3. **Create a `styles.css` file** if you want to separate styles (though the provided code has inline styles).
+
+### Step 2: Copy the HTML Code
+Copy the entire HTML code you provided into the `index.html` file.
+
+### Step 3: Open the Project
+You can open the `index.html` file in a web browser to view the landing page.
+
+### Step 4: (Optional) Set Up a Local Server
+If you want to run a local server (recommended for projects that use JavaScript), you can use tools like:
+- **Live Server** extension in Visual Studio Code.
+- **http-server** via npm.
+
+### Step 5: Verify Functionality
+Once you have the project set up:
+- Open the `index.html` file in your browser.
+- Ensure that all elements render correctly and that the JavaScript functionality works as intended.
+
+### Step 6: Next Steps
+- If you want to make any modifications or enhancements, you can do so in the `index.html` or `styles.css` file.
+- Consider adding a README file to document your project if you plan to share it.
+
+### Final Note
+Since you requested to use the design "same to same," no changes will be made to the provided HTML code. If you need further assistance or modifications in the future, feel free to ask!

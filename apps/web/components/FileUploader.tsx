@@ -253,7 +253,7 @@ export default function FileUploader({
   };
 
   return (
-    <Card className={cn('bg-surface-ui border-border-ui p-6', className)}>
+    <Card className={cn('bg-neo-white border-2 border-neo-black p-6', className)}>
       <AnimatePresence mode="wait">
         {!selectedFile && !uploadComplete && (
           <motion.div
@@ -263,7 +263,7 @@ export default function FileUploader({
             exit={{ opacity: 0 }}
             className={cn(
               'border-2 border-dashed rounded-lg p-8 transition-colors cursor-pointer',
-              isDragging ? 'border-border-strong bg-black-ui/50' : 'border-border-ui'
+              isDragging ? 'border-neo-main bg-neo-accent/10' : 'border-neo-black/30'
             )}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
@@ -282,13 +282,13 @@ export default function FileUploader({
               transition={{ duration: 0.2 }}
               className="flex flex-col items-center justify-center space-y-4"
             >
-              <Upload className="w-12 h-12 text-muted-ui" />
+              <Upload className="w-12 h-12 text-neo-main" />
               <div className="text-center">
-                <p className="text-lg font-semibold text-text-ui mb-1">
+                <p className="text-lg font-semibold text-neo-black mb-1">
                   Drag and drop your file here
                 </p>
-                <p className="text-sm text-muted-ui mb-2">or click to browse</p>
-                <p className="text-xs text-muted-ui">
+                <p className="text-sm text-neo-black/70 mb-2">or click to browse</p>
+                <p className="text-xs text-neo-black/60">
                   PDF, DOCX, TXT, PNG, JPG (max {maxSizeMB}MB)
                 </p>
               </div>
@@ -325,14 +325,14 @@ export default function FileUploader({
             transition={{ duration: 0.3 }}
             className="space-y-4"
           >
-            <div className="flex items-start justify-between p-4 bg-black-ui/30 border border-border-ui rounded-lg">
+            <div className="flex items-start justify-between p-4 bg-neo-bg border-2 border-neo-black rounded-lg">
               <div className="flex items-start space-x-3 flex-1 min-w-0">
-                <File className="w-10 h-10 text-text-ui flex-shrink-0 mt-1" />
+                <File className="w-10 h-10 text-neo-black flex-shrink-0 mt-1" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-text-ui font-medium truncate">{selectedFile.name}</p>
+                  <p className="text-neo-black font-medium truncate">{selectedFile.name}</p>
                   <div className="flex items-center space-x-3 mt-1">
-                    <p className="text-sm text-muted-ui">{formatFileSize(selectedFile.size)}</p>
-                    <span className="bg-surface-ui border border-border-ui rounded px-2 py-1 text-xs text-muted-ui">
+                    <p className="text-sm text-neo-black/70">{formatFileSize(selectedFile.size)}</p>
+                    <span className="bg-neo-white border border-neo-black rounded px-2 py-1 text-xs text-neo-black/70">
                       {FILE_TYPE_LABELS[selectedFile.type] || selectedFile.type}
                     </span>
                   </div>
@@ -365,12 +365,12 @@ export default function FileUploader({
           >
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-ui">Uploading...</span>
-                <span className="text-text-ui font-medium">{uploadProgress}%</span>
+                <span className="text-neo-black/70">Uploading...</span>
+                <span className="text-neo-black font-medium">{uploadProgress}%</span>
               </div>
-              <div className="bg-surface-ui border border-border-ui rounded-full h-2 overflow-hidden">
+              <div className="bg-neo-bg border-2 border-neo-black rounded-full h-2 overflow-hidden">
                 <motion.div
-                  className="bg-black-ui h-full"
+                  className="bg-neo-main h-full"
                   initial={{ width: 0 }}
                   animate={{ width: `${uploadProgress}%` }}
                   transition={{ duration: 0.3 }}
@@ -389,8 +389,8 @@ export default function FileUploader({
             transition={{ duration: 0.3 }}
             className="flex flex-col items-center justify-center space-y-4 py-8"
           >
-            <CheckCircle className="w-12 h-12 text-text-ui" />
-            <p className="text-lg font-semibold text-text-ui">Upload complete!</p>
+            <CheckCircle className="w-12 h-12 text-neo-accent" />
+            <p className="text-lg font-semibold text-neo-black">Upload complete!</p>
             <Button onClick={handleRemoveFile} variant="outline">
               Upload Another
             </Button>
@@ -409,10 +409,10 @@ export default function FileUploader({
             opacity: { duration: 0.3 },
             x: { duration: 0.5 }
           }}
-          className="flex items-start space-x-2 mt-4 p-3 bg-black-ui/30 border border-border-ui rounded-lg"
+          className="flex items-start space-x-2 mt-4 p-3 bg-neo-bg border-2 border-neo-main rounded-lg"
         >
-          <AlertCircle className="w-5 h-5 text-muted-ui flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-muted-ui">{validationError.message}</p>
+          <AlertCircle className="w-5 h-5 text-neo-main flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-neo-black/70">{validationError.message}</p>
         </motion.div>
       )}
     </Card>

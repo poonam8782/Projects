@@ -72,14 +72,14 @@ export default function FlashcardPracticePage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen p-8 bg-black-ui">
+      <div className="min-h-screen p-8 bg-neo-bg">
         {/* Loading state */}
         {loading && (
           <div className="flex items-center justify-center min-h-[60vh]">
-            <Card className="bg-surface-ui border-border-ui p-8">
+            <Card className="bg-neo-white border-2 border-neo-black p-8">
               <div className="flex flex-col items-center gap-4">
-                <Loader2 className="w-8 h-8 animate-spin text-text-ui" />
-                <p className="text-muted-ui">Loading flashcards...</p>
+                <Loader2 className="w-8 h-8 animate-spin text-neo-main" />
+                <p className="text-neo-black/70">Loading flashcards...</p>
               </div>
             </Card>
           </div>
@@ -88,11 +88,11 @@ export default function FlashcardPracticePage() {
         {/* Error state */}
         {!loading && error && (
           <div className="flex items-center justify-center min-h-[60vh]">
-            <Card className="bg-surface-ui border-border-ui p-8 max-w-md">
+            <Card className="bg-neo-white border-2 border-neo-black p-8 max-w-md">
               <div className="flex flex-col items-center gap-4 text-center">
-                <AlertCircle className="w-12 h-12 text-muted-ui" />
-                <h2 className="text-xl font-semibold text-text-ui">Error Loading Flashcards</h2>
-                <p className="text-muted-ui">{error}</p>
+                <AlertCircle className="w-12 h-12 text-neo-main" />
+                <h2 className="text-xl font-semibold text-neo-black">Error Loading Flashcards</h2>
+                <p className="text-neo-black/70">{error}</p>
                 <div className="flex gap-2 mt-4">
                   <Button onClick={fetchData} variant="outline">
                     Retry
@@ -109,11 +109,11 @@ export default function FlashcardPracticePage() {
         {/* Empty state */}
         {!loading && !error && flashcards.length === 0 && (
           <div className="flex items-center justify-center min-h-[60vh]">
-            <Card className="bg-surface-ui border-border-ui p-8 max-w-md">
+            <Card className="bg-neo-white border-2 border-neo-black p-8 max-w-md">
               <div className="flex flex-col items-center gap-4 text-center">
-                <BookOpen className="w-12 h-12 text-muted-ui" />
-                <h2 className="text-xl font-semibold text-text-ui">No Flashcards Available</h2>
-                <p className="text-muted-ui">
+                <BookOpen className="w-12 h-12 text-neo-main" />
+                <h2 className="text-xl font-semibold text-neo-black">No Flashcards Available</h2>
+                <p className="text-neo-black/70">
                   Generate flashcards from the dashboard to start practicing
                 </p>
                 <Button onClick={handleBackToDashboard} className="mt-4">
@@ -140,9 +140,9 @@ export default function FlashcardPracticePage() {
               </Button>
 
               <div>
-                <h1 className="text-3xl font-bold text-text-ui">Flashcard Practice</h1>
+                <h1 className="text-3xl font-bold text-neo-black">Flashcard Practice</h1>
                 {document && (
-                  <p className="text-lg text-muted-ui mt-2">{document.filename}</p>
+                  <p className="text-lg text-neo-black/70 mt-2">{document.filename}</p>
                 )}
               </div>
 

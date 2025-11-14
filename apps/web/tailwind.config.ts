@@ -11,25 +11,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
-        card: 'hsl(var(--card))',
-        'card-foreground': 'hsl(var(--card-foreground))',
-        popover: 'hsl(var(--popover))',
-        'popover-foreground': 'hsl(var(--popover-foreground))',
-        primary: 'hsl(var(--primary))',
-        'primary-foreground': 'hsl(var(--primary-foreground))',
-        secondary: 'hsl(var(--secondary))',
-        'secondary-foreground': 'hsl(var(--secondary-foreground))',
-        muted: 'hsl(var(--muted))',
-        'muted-foreground': 'hsl(var(--muted-foreground))',
-        accent: 'hsl(var(--accent))',
-        'accent-foreground': 'hsl(var(--accent-foreground))',
-        destructive: 'hsl(var(--destructive))',
-        'destructive-foreground': 'hsl(var(--destructive-foreground))',
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
+        // Neura neo-brutalist colors
+        'neo-bg': '#FFFAE5',
+        'neo-main': '#FF4D00',
+        'neo-accent': '#A3FF00',
+        'neo-purple': '#9D00FF',
+        'neo-black': '#0f0f0f',
+        'neo-white': '#ffffff',
+        'neo-blue': '#0047FF',
+        // Semantic color mapping to neo palette (for non-landing pages)
+        background: '#FFFAE5',           // neo-bg
+        foreground: '#0f0f0f',           // neo-black
+        card: '#ffffff',                 // neo-white
+        'card-foreground': '#0f0f0f',    // neo-black
+        popover: '#ffffff',              // neo-white
+        'popover-foreground': '#0f0f0f', // neo-black
+        primary: '#FF4D00',              // neo-main
+        'primary-foreground': '#ffffff', // neo-white
+        secondary: '#A3FF00',            // neo-accent
+        'secondary-foreground': '#0f0f0f', // neo-black
+        muted: '#E7E1CC',                // muted version of neo-bg
+        'muted-foreground': '#4a4330',   // darker muted
+        accent: '#9D00FF',               // neo-purple
+        'accent-foreground': '#ffffff',  // neo-white
+        destructive: '#FF4D00',          // neo-main for destructive
+        'destructive-foreground': '#ffffff', // neo-white
+        border: '#0f0f0f',               // neo-black
+        input: '#0f0f0f',                // neo-black
+        ring: '#0f0f0f',                 // neo-black
       },
       fontSize: {
         hero: 'clamp(2.5rem, 8vw + 1rem, 6rem)',
@@ -47,6 +56,10 @@ const config: Config = {
         8: '2rem',
         12: '3rem',
         16: '4rem',
+        128: '32rem',
+      },
+      cursor: {
+        none: 'none',
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -65,10 +78,20 @@ const config: Config = {
         card: 'var(--shadow-card)',
         nav: 'var(--shadow-nav)',
         hover: 'var(--shadow-hover)',
+        // Neo-brutalist shadows
+        'neo': '8px 8px 0px 0px #0f0f0f',
+        'neo-sm': '4px 4px 0px 0px #0f0f0f',
+        'neo-lg': '12px 12px 0px 0px #0f0f0f',
+        'neo-hover': '12px 12px 0px 0px #0f0f0f',
+        'neo-active': '2px 2px 0px 0px #0f0f0f',
       },
       fontFamily: {
         // Prefer Inter variable font globally when available
         sans: ['var(--font-inter)', 'system-ui', '-apple-system', 'sans-serif'],
+        // Neo-brutalist fonts
+        'display': ['"Syne"', 'sans-serif'],
+        'body': ['"Space Grotesk"', 'sans-serif'],
+        'heavy': ['"Archivo Black"', 'sans-serif'],
       },
     },
   },

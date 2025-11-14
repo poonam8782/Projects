@@ -36,8 +36,8 @@ def mock_genai():
 
 @pytest.fixture
 def sample_embedding():
-    """Return a simulated embedding vector of 1536 dimensions."""
-    return [0.1] * 1536
+    """Return a simulated embedding vector of 768 dimensions."""
+    return [0.1] * 768
 
 
 @pytest.fixture
@@ -67,7 +67,7 @@ class TestGenerateEmbedding:
         
         # Assertions
         assert isinstance(result, list)
-        assert len(result) == 1536
+        assert len(result) == 768
         assert all(isinstance(x, float) for x in result)
         
         # Verify API call
@@ -76,7 +76,7 @@ class TestGenerateEmbedding:
         assert call_kwargs['model'] == 'models/embedding-001'
         assert call_kwargs['content'] == sample_text
         assert call_kwargs['task_type'] == 'RETRIEVAL_DOCUMENT'
-        assert call_kwargs['output_dimensionality'] == 1536
+        assert call_kwargs['output_dimensionality'] == 768
     
     def test_generate_embedding_with_query_task_type(self, mock_genai, sample_embedding, sample_text):
         """Test that task_type parameter works correctly."""

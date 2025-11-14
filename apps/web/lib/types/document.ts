@@ -114,13 +114,15 @@ export interface GetNotesResponse {
 
 /**
  * Response from mindmap generation endpoint.
+ * Supports multiple formats: svg, mermaid, markmap
  */
 export interface GenerateMindmapResponse {
   document_id: string;
   filename: string;
   storage_path: string;
   download_url: string;
-  svg_preview: string | null;
+  format: 'svg' | 'mermaid' | 'markmap';
+  content_preview: string | null;
   size_bytes: number;
   node_count?: number | null;
   status: 'success' | 'failed';
