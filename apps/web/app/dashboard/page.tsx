@@ -1,1405 +1,403 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { ProtectedRoute } from "@/lib/auth/protected-route";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
-import { motion } from "framer-motion";
-import {
-  Button,
-  Card,
-  CardHeader,
-  CardContent,
-  CardFooter,
-  Badge,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  Checkbox,
-} from "@neura/ui";
 import FileUploader from "@/components/FileUploader";
-import TopNav from "@/components/TopNav";
-import {
-  DocumentMetadata,
-  FlashcardResponse,
-  ExportRequest,
-  SynthesizeRequest,
-  DocumentSource,
-} from "@/lib/types/document";
-import { formatFileSize, formatDate } from "@/lib/utils/format";
-import {
-  FileText,
-  Download,
-  Trash2,
-  AlertCircle,
-  Loader2,
-  Eye,
-  Sparkles,
-  MessageSquare,
-  FileDown,
-  BookOpen,
-  GraduationCap,
-  FileArchive,
-  Network,
-} from "lucide-react";
-import { toast } from "sonner";
+import Link from "next/link";
+import type { DocumentMetadata } from '@/lib/types/document';
 import {
   getDocuments,
-  deleteDocument as apiDeleteDocument,
   getDownloadUrl,
   embedDocument,
   generateNotes,
   generateMindmap,
   generateFlashcards,
-  getFlashcardsByDocument,
   exportDocument,
-  synthesizeDocuments,
-  getNotes,
-} from "@/services/api";
-import MindmapViewerUnified from "@/components/MindmapViewerUnified";
-import { useRouter } from "next/navigation";
-import { getFileTypeLabel, getStatusBadgeVariant } from "@/lib/utils/document";
+  deleteDocument,
+  DocumentUploadResponse,
+} from '@/services/api';
 
-// Loading animation variants
-const barVariants = {
-  initial: {
-    scaleY: 0.5,
-    opacity: 0,
-  },
-  animate: {
-    scaleY: 1,
-    opacity: 1,
-    transition: {
-      repeat: Infinity,
-      repeatType: "mirror" as const,
-      duration: 1,
-      ease: "circIn",
-    },
-  },
-};
-
-// Bar Loader Component
-const BarLoader = () => {
-  return (
-    <motion.div
-      transition={{
-        staggerChildren: 0.25,
-      }}
-      initial="initial"
-      animate="animate"
-      className="flex gap-1">
-      <motion.div variants={barVariants} className="h-12 w-2 bg-neo-main" />
-      <motion.div variants={barVariants} className="h-12 w-2 bg-neo-main" />
-      <motion.div variants={barVariants} className="h-12 w-2 bg-neo-main" />
-      <motion.div variants={barVariants} className="h-12 w-2 bg-neo-main" />
-      <motion.div variants={barVariants} className="h-12 w-2 bg-neo-main" />
-    </motion.div>
-  );
-};
-
-// Loading Dialog Component
-const LoadingDialog = ({
-  open,
-  message,
-}: {
-  open: boolean;
-  message: string;
-}) => {
-  return (
-    <Dialog open={open}>
-      <DialogContent className="sm:max-w-md bg-neo-white border-4 border-neo-black shadow-neo">
-        <div className="flex flex-col items-center justify-center py-8 gap-6">
-          <BarLoader />
-          <p className="text-lg font-medium text-neo-black">{message}</p>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-export default function DashboardPage() {
+export default function Dashboard(): JSX.Element {
   const { user, signOut } = useAuth();
   const router = useRouter();
-
-  // State management
+  
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
-  const [flashcardMetadata, setFlashcardMetadata] = useState<
-    Map<string, { count: number; nextReview: string | null }>
-  >(new Map());
-  const [notesMetadata, setNotesMetadata] = useState<Map<string, boolean>>(
-    new Map(),
-  );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [documentToDelete, setDocumentToDelete] =
-    useState<DocumentMetadata | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [embeddingDocuments, setEmbeddingDocuments] = useState<Set<string>>(
-    new Set(),
-  );
-  const [generatingNotes, setGeneratingNotes] = useState<Set<string>>(
-    new Set(),
-  );
-  const [generatingMindmaps, setGeneratingMindmaps] = useState<Set<string>>(
-    new Set(),
-  );
-  const [generatingFlashcards, setGeneratingFlashcards] = useState<Set<string>>(
-    new Set(),
-  );
-  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
-  const [mindmapDialogOpen, setMindmapDialogOpen] = useState(false);
-  const [flashcardsDialogOpen, setFlashcardsDialogOpen] = useState(false);
-  const [currentNotes, setCurrentNotes] = useState<{
-    content: string;
-    filename: string;
-    downloadUrl: string;
-    documentId: string;
-  } | null>(null);
-  const [currentMindmap, setCurrentMindmap] = useState<{
-    downloadUrl: string;
-    filename: string;
-    nodeCount: number | null;
-    format: "svg" | "mermaid" | "markmap";
-  } | null>(null);
-  const [currentFlashcards, setCurrentFlashcards] = useState<{
-    documentId: string;
-    flashcards: FlashcardResponse[];
-    count: number;
-  } | null>(null);
-  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(
-    new Set(),
-  );
-  const [exportFormat, setExportFormat] = useState<"markdown" | "pdf">(
-    "markdown",
-  );
-  const [exporting, setExporting] = useState(false);
-  const [synthesisDialogOpen, setSynthesisDialogOpen] = useState(false);
-  const [synthesisResult, setSynthesisResult] = useState<{
-    markdown: string;
-    sources: DocumentSource[];
-    type: string;
-  } | null>(null);
-  const [loadingDialogOpen, setLoadingDialogOpen] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState("Processing...");
-
-  const handleSignOut = async () => {
-    await signOut();
-    // ProtectedRoute will redirect when user becomes null
-  };
-
-  // Called by FileUploader after successful upload to refresh document list
-  const fetchFlashcardMetadata = useCallback(async (documentIds: string[]) => {
-    try {
-      const metadata = new Map<
-        string,
-        { count: number; nextReview: string | null }
-      >();
-      const nowIso = new Date().toISOString();
-
-      for (const documentId of documentIds) {
-        try {
-          const flashcards = await getFlashcardsByDocument(documentId);
-          const count = flashcards.length;
-
-          // Find earliest next_review (prefer due cards, then upcoming)
-          let nextReview: string | null = null;
-          if (flashcards.length > 0) {
-            const dueCards = flashcards.filter((c) => c.next_review <= nowIso);
-            const cardsToCheck = dueCards.length > 0 ? dueCards : flashcards;
-            const sortedCards = cardsToCheck.sort((a, b) =>
-              a.next_review.localeCompare(b.next_review),
-            );
-            if (sortedCards.length > 0 && sortedCards[0]) {
-              nextReview = sortedCards[0].next_review;
-            }
-          }
-
-          metadata.set(documentId, { count, nextReview });
-        } catch (err) {
-          console.warn(
-            `Failed to fetch flashcards for document ${documentId}:`,
-            err,
-          );
-          // Continue with other documents
-        }
-      }
-
-      setFlashcardMetadata(metadata);
-    } catch (err) {
-      console.warn("Failed to fetch flashcard metadata:", err);
-      // Don't fail the whole dashboard if metadata fetch fails
-    }
-  }, []);
-
-  // Fetch notes existence for all documents
-  const fetchNotesMetadata = useCallback(async (documentIds: string[]) => {
-    try {
-      // Parallel fetching with Promise.allSettled
-      const promises = documentIds.map(async (documentId) => {
-        try {
-          const result = await getNotes(documentId);
-          // null means 404 - notes don't exist
-          if (result === null) {
-            return { id: documentId, hasNotes: false };
-          }
-          return { id: documentId, hasNotes: true };
-        } catch (err) {
-          // For errors (401, 500, etc.), log warning and return undefined
-          console.warn(
-            `Failed to check notes for document ${documentId}:`,
-            err,
-          );
-          return { id: documentId, hasNotes: undefined };
-        }
-      });
-
-      const results = await Promise.allSettled(promises);
-      const metadata = new Map<string, boolean>();
-
-      results.forEach((result) => {
-        if (
-          result.status === "fulfilled" &&
-          result.value.hasNotes !== undefined
-        ) {
-          metadata.set(result.value.id, result.value.hasNotes);
-        }
-      });
-
-      setNotesMetadata(metadata);
-    } catch (err) {
-      console.warn("Failed to fetch notes metadata:", err);
-      // Don't fail the whole dashboard if metadata fetch fails
-    }
-  }, []);
+  const [loadingDocs, setLoadingDocs] = useState<boolean>(true);
+  const [exportFormat, setExportFormat] = useState<'markdown' | 'pdf'>('markdown');
 
   // Fetch documents from backend
-  const fetchDocuments = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const documents = await getDocuments();
-      setDocuments(documents);
-      // Fetch both flashcard and notes metadata in parallel
-      await Promise.all([
-        fetchFlashcardMetadata(documents.map((d) => d.id)),
-        fetchNotesMetadata(documents.map((d) => d.id)),
-      ]);
-    } catch (err) {
-      console.error("Error fetching documents:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load documents";
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchFlashcardMetadata, fetchNotesMetadata]);
-
-  const handleUploadComplete = useCallback(() => {
-    toast.success("Document uploaded successfully");
-    void fetchDocuments();
-  }, [fetchDocuments]);
-
-  // Fetch documents on mount
   useEffect(() => {
-    void fetchDocuments();
-  }, [fetchDocuments]);
-
-  // Clean up selection state when documents change (e.g., after deletion)
-  useEffect(() => {
-    const currentIds = new Set(documents.map((doc) => doc.id));
-    setSelectedDocuments(
-      (prev) => new Set([...prev].filter((id) => currentIds.has(id))),
-    );
-  }, [documents]);
-
-  // Handle delete button click
-  const handleDelete = (document: DocumentMetadata) => {
-    setDocumentToDelete(document);
-    setDeleteDialogOpen(true);
-  };
-
-  // Confirm delete
-  const confirmDelete = async () => {
-    if (!documentToDelete) return;
-
-    setDeleting(true);
-
-    try {
-      await apiDeleteDocument(documentToDelete.id);
-
-      // Remove document from local state
-      setDocuments((prev) => prev.filter((d) => d.id !== documentToDelete.id));
-      toast.success("Document deleted successfully");
-      setDeleteDialogOpen(false);
-      setDocumentToDelete(null);
-    } catch (err) {
-      console.error("Error deleting document:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to delete document";
-      toast.error(errorMessage);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  // Handle download
-  const handleDownload = async (document: DocumentMetadata) => {
-    try {
-      const url = await getDownloadUrl(document.id);
-      window.open(url, "_blank");
-    } catch (err) {
-      console.error("Error downloading document:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to download document";
-      toast.error(errorMessage);
-    }
-  };
-
-  // Handle open (same as download but explicit action)
-  const handleOpen = async (document: DocumentMetadata) => {
-    try {
-      const url = await getDownloadUrl(document.id);
-      window.open(url, "_blank");
-    } catch (err) {
-      console.error("Error opening document:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to open document";
-      toast.error(errorMessage);
-    }
-  };
-
-  // Handle embed
-  const handleEmbed = async (document: DocumentMetadata) => {
-    // Validate document status
-    if (document.status !== "extracted") {
-      toast.error("Document must have extracted text before embedding");
-      return;
-    }
-
-    // Add document ID to embedding set
-    setEmbeddingDocuments((prev) => new Set(prev).add(document.id));
-
-    // Show loading toast
-    const toastId = toast.loading("Generating embeddings...");
-
-    try {
-      // Call embed API
-      const result = await embedDocument(document.id);
-
-      // Dismiss loading toast
-      toast.dismiss(toastId);
-
-      // Compute safe duration string
-      const durationString =
-        typeof result.processing_time_seconds === "number"
-          ? ` (${result.processing_time_seconds.toFixed(1)}s)`
-          : "";
-
-      // Show success toast with processing time
-      toast.success(
-        `${
-          result.message || "Embeddings generated successfully"
-        }${durationString}`,
-      );
-
-      // Update local document state to reflect new status
-      setDocuments((prev) =>
-        prev.map((d) =>
-          d.id === document.id ? { ...d, status: "embedded" as const } : d,
-        ),
-      );
-    } catch (err) {
-      // Dismiss loading toast
-      toast.dismiss(toastId);
-
-      // Extract error message
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to generate embeddings";
-
-      // Show error toast
-      toast.error(errorMessage);
-
-      // Log error for debugging
-      console.error("Error embedding document:", err);
-    } finally {
-      // Remove document ID from embedding set
-      setEmbeddingDocuments((prev) => {
-        const next = new Set(prev);
-        next.delete(document.id);
-        return next;
-      });
-    }
-  };
-
-  // Navigate to future document detail page with chat
-  const handleChat = (document: DocumentMetadata) => {
-    if (document.status !== "embedded") {
-      toast.error("Document must be embedded before chatting");
-      return;
-    }
-    // Placeholder navigation - detail page will host DocumentChat component in Sprint 3 Phase 2
-    // Casting to string route for now pending detail page creation
-    router.push(`/document/${document.id}`);
-  };
-
-  // Navigate to view notes page
-  const handleViewNotes = (document: DocumentMetadata) => {
-    router.push(`/notes/${document.id}`);
-  };
-
-  // Navigate to view flashcards page
-  const handleViewFlashcards = (document: DocumentMetadata) => {
-    router.push(`/flashcards/${document.id}/list`);
-  };
-
-  // Handle generate notes
-  const handleGenerateNotes = async (document: DocumentMetadata) => {
-    if (document.status === "uploaded") {
-      toast.error("Document must have extracted text before generating notes");
-      return;
-    }
-    setGeneratingNotes((prev) => new Set(prev).add(document.id));
-    setLoadingMessage("Generating notes...");
-    setLoadingDialogOpen(true);
-    try {
-      const result = await generateNotes(document.id);
-      setLoadingDialogOpen(false);
-      const duration =
-        typeof result.processing_time_seconds === "number"
-          ? ` (${result.processing_time_seconds.toFixed(1)}s)`
-          : "";
-      toast.success(`Notes generated${duration}`);
-      setCurrentNotes({
-        content: result.content_preview || "",
-        filename: result.filename,
-        downloadUrl: result.download_url,
-        documentId: document.id,
-      });
-      setNotesMetadata((prev) => {
-        const next = new Map(prev);
-        next.set(document.id, true);
-        return next;
-      });
-      setNotesDialogOpen(true);
-    } catch (err) {
-      setLoadingDialogOpen(false);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to generate notes";
-      toast.error(errorMessage);
-      console.error("Error generating notes:", err);
-    } finally {
-      setGeneratingNotes((prev) => {
-        const next = new Set(prev);
-        next.delete(document.id);
-        return next;
-      });
-    }
-  };
-
-  // Handle generate mindmap
-  const handleGenerateMindmap = async (document: DocumentMetadata) => {
-    if (document.status === "uploaded") {
-      toast.error(
-        "Document must have extracted text before generating mindmap",
-      );
-      return;
-    }
-    setGeneratingMindmaps((prev) => new Set(prev).add(document.id));
-    setLoadingMessage("Generating mindmap...");
-    setLoadingDialogOpen(true);
-    try {
-      const result = await generateMindmap(document.id, "mermaid");
-      setLoadingDialogOpen(false);
-      const duration =
-        typeof result.processing_time_seconds === "number"
-          ? ` (${result.processing_time_seconds.toFixed(1)}s)`
-          : "";
-      toast.success(`Mindmap generated${duration}`);
-      setCurrentMindmap({
-        downloadUrl: result.download_url,
-        filename: result.filename,
-        nodeCount: result.node_count || null,
-        format: result.format,
-      });
-      setMindmapDialogOpen(true);
-    } catch (err) {
-      setLoadingDialogOpen(false);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to generate mindmap";
-      toast.error(errorMessage);
-      console.error("Error generating mindmap:", err);
-    } finally {
-      setGeneratingMindmaps((prev) => {
-        const next = new Set(prev);
-        next.delete(document.id);
-        return next;
-      });
-    }
-  };
-
-  // Handle generate flashcards
-  const handleGenerateFlashcards = async (document: DocumentMetadata) => {
-    if (document.status === "uploaded") {
-      toast.error(
-        "Document must have extracted text before generating flashcards",
-      );
-      return;
-    }
-    setGeneratingFlashcards((prev) => new Set(prev).add(document.id));
-    setLoadingMessage("Generating flashcards...");
-    setLoadingDialogOpen(true);
-    try {
-      const result = await generateFlashcards(document.id, 10);
-      setLoadingDialogOpen(false);
-      toast.success(
-        `${
-          result.flashcard_count
-        } flashcards generated (${result.processing_time_seconds.toFixed(1)}s)`,
-      );
-      setCurrentFlashcards({
-        documentId: document.id,
-        flashcards: result.flashcards,
-        count: result.flashcard_count,
-      });
-      setFlashcardMetadata((prev) => {
-        const next = new Map(prev);
-        const nowIso = new Date().toISOString();
-        const flashcards = result.flashcards;
-        const count = result.flashcard_count;
-        const due = flashcards.filter((c) => c.next_review <= nowIso);
-        const pool = due.length > 0 ? due : flashcards;
-        const nextReview =
-          pool.length > 0
-            ? pool.sort((a, b) => a.next_review.localeCompare(b.next_review))[0]
-                ?.next_review ?? null
-            : null;
-        next.set(document.id, { count, nextReview });
-        return next;
-      });
-      setFlashcardsDialogOpen(true);
-    } catch (err) {
-      setLoadingDialogOpen(false);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to generate flashcards";
-      toast.error(errorMessage);
-      console.error("Error generating flashcards:", err);
-    } finally {
-      setGeneratingFlashcards((prev) => {
-        const next = new Set(prev);
-        next.delete(document.id);
-        return next;
-      });
-    }
-  };
-
-  // Selection handlers
-  const handleToggleSelect = (documentId: string) => {
-    setSelectedDocuments((prev) => {
-      const next = new Set(prev);
-      if (next.has(documentId)) {
-        next.delete(documentId);
-      } else {
-        next.add(documentId);
+    let mounted = true;
+    const load = async () => {
+      try {
+        setLoadingDocs(true);
+        const docs = await getDocuments();
+        if (!mounted) return;
+        setDocuments(docs || []);
+      } catch (err: any) {
+        console.error('Failed to load documents', err);
+      } finally {
+        if (mounted) setLoadingDocs(false);
       }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const refreshDocuments = async () => {
+    try {
+      const docs = await getDocuments();
+      setDocuments(docs || []);
+    } catch (err: any) {
+      console.error('Failed to refresh documents', err);
+    }
+  };
+
+  const handleUploadComplete = (result: DocumentUploadResponse) => {
+    console.log('Upload complete:', result);
+    refreshDocuments();
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
-  const handleSelectAll = () => {
-    setSelectedDocuments(new Set(documents.map((doc) => doc.id)));
-  };
+  const handleSelectAll = () => setSelected(new Set(documents.map((d) => d.id)));
+  const handleClear = () => setSelected(new Set());
 
-  const handleDeselectAll = () => {
-    setSelectedDocuments(new Set());
-  };
-
-  // Export handler
   const handleExport = async () => {
-    // Validate selection
-    if (selectedDocuments.size === 0) {
-      toast.error("Please select at least one document");
+    if (selected.size === 0) {
+      window.alert("Please select at least one document to export.");
       return;
     }
-
-    // Validate maximum for synthesis
-    if (selectedDocuments.size > 10) {
-      toast.error("Maximum 10 documents for synthesis");
-      return;
-    }
-
-    setExporting(true);
 
     try {
-      if (selectedDocuments.size === 1) {
-        // Single document export
-        const documentId = Array.from(selectedDocuments)[0];
-        if (!documentId) {
-          toast.error("Invalid document selection");
-          return;
-        }
-        setLoadingMessage("Exporting document...");
-        setLoadingDialogOpen(true);
-
-        const request: ExportRequest = {
-          document_id: documentId,
-          format: exportFormat,
-          include_notes: true,
-          include_flashcards: true,
-          include_chat_history: false,
-        };
-
-        const result = await exportDocument(request);
-        setLoadingDialogOpen(false);
-        toast.success(
-          `Export generated (${result.processing_time_seconds.toFixed(1)}s)`,
-        );
-        window.open(result.download_url, "_blank");
-        toast.info(`Included: ${result.included_sections.join(", ")}`);
-        setSelectedDocuments(new Set());
-      } else {
-        // Multi-document synthesis
-        // Validate all selected documents have extracted text
-        const selectedDocIds = Array.from(selectedDocuments);
-        const ineligibleDocs = selectedDocIds
-          .map((id) => documents.find((doc) => doc.id === id))
-          .filter(
-            (doc) =>
-              doc && doc.status !== "extracted" && doc.status !== "embedded",
-          )
-          .map((doc) => doc?.filename);
-
-        if (ineligibleDocs.length > 0) {
-          toast.error(
-            `Cannot synthesize: The following documents lack extracted text: ${ineligibleDocs.join(
-              ", ",
-            )}`,
-          );
-          return;
-        }
-
-        setLoadingMessage(
-          `Synthesizing ${selectedDocuments.size} documents...`,
-        );
-        setLoadingDialogOpen(true);
-
-        const request: SynthesizeRequest = {
-          document_ids: selectedDocIds,
-          synthesis_type: "summary",
-          include_embeddings: false,
-        };
-
-        const result = await synthesizeDocuments(request);
-        setLoadingDialogOpen(false);
-        toast.success(
-          `Synthesis complete (${result.processing_time_seconds.toFixed(1)}s)`,
-        );
-        setSynthesisResult({
-          markdown: result.markdown_output,
-          sources: result.sources,
-          type: result.synthesis_type,
+      for (const id of Array.from(selected)) {
+        const resp = await exportDocument({ 
+          document_id: id, 
+          format: exportFormat, 
+          include_notes: true, 
+          include_flashcards: true, 
+          include_chat_history: false 
         });
-        setSynthesisDialogOpen(true);
-        setSelectedDocuments(new Set());
+        if (resp?.download_url) {
+          window.open(resp.download_url, '_blank');
+        }
       }
-    } catch (err) {
-      setLoadingDialogOpen(false);
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Failed to export/synthesize documents";
-      toast.error(errorMessage);
-      console.error("Error exporting/synthesizing:", err);
+    } catch (err: any) {
+      console.error('Export error', err);
+      window.alert('Export failed: ' + (err?.message || String(err)));
     } finally {
-      setExporting(false);
+      setSelected(new Set());
     }
   };
 
-  // Download synthesis markdown
-  const handleDownloadSynthesis = () => {
-    if (!synthesisResult) return;
+  const handleDownload = async (documentId: string) => {
+    try {
+      const url = await getDownloadUrl(documentId);
+      if (url) window.open(url, '_blank');
+    } catch (err: any) {
+      console.error('Download error', err);
+      window.alert('Failed to get download URL: ' + (err?.message || String(err)));
+    }
+  };
 
-    const blob = new Blob([synthesisResult.markdown], {
-      type: "text/markdown",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `synthesis-${Date.now()}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleEmbed = async (documentId: string) => {
+    try {
+      await embedDocument(documentId);
+      window.alert('Embedding started/queued for document');
+      setDocuments((prev) => prev.map(d => d.id === documentId ? { ...d, status: 'embedded' } : d));
+    } catch (err: any) {
+      console.error('Embed error', err);
+      window.alert('Failed to embed: ' + (err?.message || String(err)));
+    }
+  };
+
+  const handleGenerateNotes = async (documentId: string) => {
+    try {
+      const res = await generateNotes(documentId);
+      if (res?.download_url) window.open(res.download_url, '_blank');
+      else window.alert('Notes generation requested.');
+    } catch (err: any) {
+      console.error('Notes error', err);
+      window.alert('Failed to generate notes: ' + (err?.message || String(err)));
+    }
+  };
+
+  const handleGenerateMindmap = async (documentId: string) => {
+    try {
+      const res = await generateMindmap(documentId, 'svg');
+      if (res?.download_url) window.open(res.download_url, '_blank');
+      else window.alert('Mindmap generation requested.');
+    } catch (err: any) {
+      console.error('Mindmap error', err);
+      window.alert('Failed to generate mindmap: ' + (err?.message || String(err)));
+    }
+  };
+
+  const handleGenerateFlashcards = async (documentId: string) => {
+    try {
+      const res = await generateFlashcards(documentId, 10);
+      window.alert(`Flashcards generation status: ${res?.status || 'requested'}`);
+    } catch (err: any) {
+      console.error('Flashcards error', err);
+      window.alert('Failed to generate flashcards: ' + (err?.message || String(err)));
+    }
+  };
+
+  const handleDelete = async (documentId: string) => {
+    if (!window.confirm('Delete this document and all associated data?')) return;
+    try {
+      await deleteDocument(documentId);
+      setDocuments((prev) => prev.filter((d) => d.id !== documentId));
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(documentId);
+        return next;
+      });
+    } catch (err: any) {
+      console.error('Delete error', err);
+      window.alert('Failed to delete document: ' + (err?.message || String(err)));
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/login');
+  };
+
+  const formatBytes = (bytes: number) => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   return (
-    <ProtectedRoute>
-      <TopNav />
-      <main
-        className="min-h-screen p-8 bg-neo-bg text-neo-black">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold">Dashboard</h1>
-            <p className="text-muted-ui text-sm">Signed in as {user?.email}</p>
+    <main className="font-body bg-neo-bg min-h-screen">
+      <style jsx global>{`
+        body { 
+          background-color: #FFFAE5 !important; 
+          color: #0f0f0f; 
+        }
+        ::selection { 
+          background-color: #0f0f0f; 
+          color: #A3FF00; 
+        }
+        ::-webkit-scrollbar { 
+          width: 16px; 
+        }
+        ::-webkit-scrollbar-track { 
+          background: #FFFAE5; 
+          border-left: 3px solid #0f0f0f; 
+        }
+        ::-webkit-scrollbar-thumb { 
+          background: #0f0f0f; 
+          border: 3px solid #FFFAE5; 
+        }
+        ::-webkit-scrollbar-thumb:hover { 
+          background: #FF4D00; 
+        }
+      `}</style>
+
+      <nav className="sticky top-0 left-0 w-full flex justify-between items-center p-4 md:p-6 z-50 bg-neo-black text-neo-bg border-b-4 border-neo-accent shadow-neo">
+        <div className="flex items-center gap-12">
+          <Link href="/" className="font-heavy text-3xl tracking-tighter hover:text-neo-accent transition-colors">
+            NEURA.
+          </Link>
+          <div className="pointer-events-auto hidden md:flex gap-8 font-bold text-lg items-center">
+            <Link href="/features" className="hover:text-neo-main transition-colors">Features</Link>
+            <Link href="/benefits" className="hover:text-neo-main transition-colors">Benefits</Link>
+            <Link href="/pricing" className="hover:text-neo-main transition-colors">Pricing</Link>
+            <Link href="/contact" className="hover:text-neo-main transition-colors">Contact</Link>
           </div>
-          <Button variant="outline" onClick={() => void handleSignOut()}>
+        </div>
+        <div className="flex items-center gap-6">
+          <Link href="/pricing" className="border-2 border-neo-accent bg-neo-accent text-neo-black px-6 py-2 font-heavy hover:bg-neo-black hover:text-neo-accent transition-all duration-300">
+            Upgrade
+          </Link>
+          <button onClick={handleSignOut} className="font-body font-bold hover:text-neo-main transition-colors">
             Sign Out
-          </Button>
+          </button>
+        </div>
+      </nav>
+
+      <div className="container mx-auto p-4 md:p-12 space-y-12">
+        <div>
+          <h1 className="font-heavy text-5xl md:text-7xl text-black">Dashboard</h1>
+          <p className="font-mono text-lg text-gray-700 mt-2">
+            Signed in as: {user?.email || "Loading..."}
+          </p>
         </div>
 
-        <div className="space-y-8">
-          <div>
-            <h2 className="text-2xl font-semibold text-text-ui mb-4">
-              Upload Document
-            </h2>
-            <FileUploader onUploadComplete={handleUploadComplete} />
-          </div>
+        <section className="bg-neo-white border-4 border-black shadow-neo p-8">
+          <h2 className="font-heavy text-3xl uppercase text-black mb-6 border-b-2 border-black/20 pb-4">
+            Upload Document
+          </h2>
+          <FileUploader onUploadComplete={handleUploadComplete} className="border-0 bg-transparent p-0" />
+        </section>
 
-          <div>
-            <h2 className="text-2xl font-semibold text-text-ui mb-4">
-              Your Documents
-            </h2>
+        <section>
+          <h2 className="font-heavy text-3xl uppercase text-black mb-6">Your Documents</h2>
 
-            {/* Export controls - only show when documents exist */}
-            {documents.length > 0 && (
-              <div className="flex items-center justify-between mb-4 p-4 bg-neo-white border-2 border-neo-black rounded-lg">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted-ui">
-                    {selectedDocuments.size} selected
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSelectAll}
-                    disabled={selectedDocuments.size === documents.length}>
-                    Select All
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleDeselectAll}
-                    disabled={selectedDocuments.size === 0}>
-                    Clear
-                  </Button>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant={
-                        exportFormat === "markdown" ? "default" : "outline"
-                      }
-                      size="sm"
-                      onClick={() => setExportFormat("markdown")}>
-                      Markdown
-                    </Button>
-                    <Button
-                      variant={exportFormat === "pdf" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setExportFormat("pdf")}>
-                      PDF
-                    </Button>
-                  </div>
-                  <Button
-                    onClick={() => void handleExport()}
-                    disabled={selectedDocuments.size === 0 || exporting}>
-                    {exporting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        {selectedDocuments.size === 1
-                          ? "Exporting..."
-                          : "Synthesizing..."}
-                      </>
-                    ) : (
-                      <>
-                        <FileArchive className="w-4 h-4 mr-2" />
-                        {selectedDocuments.size === 1
-                          ? "Export"
-                          : selectedDocuments.size > 1
-                          ? "Synthesize"
-                          : "Export"}
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Loading state */}
-            {loading && (
-              <Card className="bg-neo-white border-2 border-neo-black">
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 text-neo-main animate-spin mb-4" />
-                  <p className="text-neo-black/70">Loading documents...</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Error state */}
-            {error && !loading && (
-              <Card className="bg-neo-white border-2 border-neo-black">
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <AlertCircle className="w-8 h-8 text-neo-main mb-4" />
-                  <p className="text-neo-black/70 mb-4">{error}</p>
-                  <Button
-                    variant="outline"
-                    onClick={() => void fetchDocuments()}>
-                    Retry
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Empty state */}
-            {!loading && !error && documents.length === 0 && (
-              <Card className="bg-neo-white border-2 border-neo-black">
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <FileText className="w-12 h-12 text-neo-main mb-4" />
-                  <p className="text-neo-black/70">
-                    No documents yet. Upload your first document above.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Document grid */}
-            {!loading && !error && documents.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {documents.map((document) => (
-                  <Card
-                    key={document.id}
-                    className="bg-neo-white border-2 border-neo-black hover:border-neo-main transition-colors">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center space-x-2 flex-1 min-w-0">
-                          <Checkbox
-                            checked={selectedDocuments.has(document.id)}
-                            onCheckedChange={() =>
-                              handleToggleSelect(document.id)
-                            }
-                            aria-label={`Select ${document.filename}`}
-                            className="flex-shrink-0"
-                          />
-                          <FileText className="w-5 h-5 text-text-ui flex-shrink-0" />
-                          <button
-                            onClick={() => handleOpen(document)}
-                            className="text-sm truncate text-left hover:underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
-                            tabIndex={0}>
-                            {document.filename}
-                          </button>
-                        </div>
-                        <Badge variant={getStatusBadgeVariant(document.status)}>
-                          {document.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-ui">Size:</span>
-                        <span className="text-text-ui">
-                          {formatFileSize(document.size_bytes)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-ui">Uploaded:</span>
-                        <span className="text-text-ui">
-                          {formatDate(document.created_at)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-ui">Type:</span>
-                        <Badge variant="outline" className="text-xs">
-                          {getFileTypeLabel(document.mime_type)}
-                        </Badge>
-                      </div>
-                      {flashcardMetadata.has(document.id) &&
-                        flashcardMetadata.get(document.id)!.count > 0 && (
-                          <>
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-ui">Flashcards:</span>
-                              <span className="text-text-ui">
-                                {flashcardMetadata.get(document.id)!.count}{" "}
-                                flashcards
-                              </span>
-                            </div>
-                            {(() => {
-                              const metadata = flashcardMetadata.get(
-                                document.id,
-                              );
-                              const nextReview = metadata?.nextReview;
-                              if (nextReview) {
-                                return (
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-ui">
-                                      Next review:
-                                    </span>
-                                    <span className="text-text-ui">
-                                      {nextReview <= new Date().toISOString()
-                                        ? "Due now"
-                                        : formatDate(nextReview)}
-                                    </span>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
-                          </>
-                        )}
-                    </CardContent>
-                    <CardFooter className="flex justify-end space-x-2">
-                      {(document.status === "extracted" ||
-                        document.status === "embedded" ||
-                        document.status === "failed") && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEmbed(document)}
-                          disabled={
-                            embeddingDocuments.has(document.id) ||
-                            document.status === "embedded"
-                          }
-                          className="text-text-ui hover:text-text-ui"
-                          aria-label="Generate embeddings for AI chat"
-                          title="Generate embeddings for AI chat">
-                          {embeddingDocuments.has(document.id) ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-4 h-4" />
-                          )}
-                        </Button>
-                      )}
-                      {notesMetadata.get(document.id) === true && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewNotes(document)}
-                          className="text-primary hover:text-primary/80"
-                          aria-label="View notes"
-                          title="View generated notes">
-                          <BookOpen className="w-4 h-4" />
-                        </Button>
-                      )}
-                      {(document.status === "extracted" ||
-                        document.status === "embedded" ||
-                        document.status === "failed") && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleGenerateNotes(document)}
-                          disabled={generatingNotes.has(document.id)}
-                          className="text-text-ui hover:text-text-ui"
-                          aria-label="Generate notes"
-                          title="Generate study notes">
-                          {generatingNotes.has(document.id) ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <FileDown className="w-4 h-4" />
-                          )}
-                        </Button>
-                      )}
-                      {(document.status === "extracted" ||
-                        document.status === "embedded" ||
-                        document.status === "failed") && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleGenerateMindmap(document)}
-                          disabled={generatingMindmaps.has(document.id)}
-                          className="text-text-ui hover:text-text-ui"
-                          aria-label="Generate mindmap"
-                          title="Generate mindmap">
-                          {generatingMindmaps.has(document.id) ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Network className="w-4 h-4" />
-                          )}
-                        </Button>
-                      )}
-                      {flashcardMetadata.has(document.id) &&
-                        flashcardMetadata.get(document.id)!.count > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewFlashcards(document)}
-                            className="text-primary hover:text-primary/80"
-                            aria-label="View flashcards"
-                            title="View flashcard library">
-                            <GraduationCap className="w-4 h-4" />
-                          </Button>
-                        )}
-                      {(document.status === "extracted" ||
-                        document.status === "embedded" ||
-                        document.status === "failed") && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleGenerateFlashcards(document)}
-                          disabled={generatingFlashcards.has(document.id)}
-                          className="text-text-ui hover:text-text-ui"
-                          aria-label="Generate flashcards"
-                          title="Generate flashcards">
-                          {generatingFlashcards.has(document.id) ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <GraduationCap className="w-4 h-4" />
-                          )}
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpen(document)}
-                        className="text-text-ui hover:text-text-ui"
-                        aria-label="View document"
-                        title="View document">
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDownload(document)}
-                        className="text-text-ui hover:text-text-ui"
-                        aria-label="Download document"
-                        title="Download document">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                      {document.status === "embedded" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleChat(document)}
-                          className="text-text-ui hover:text-text-ui"
-                          aria-label="Chat with document"
-                          title="Chat with document">
-                          <MessageSquare className="w-4 h-4" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(document)}
-                        className="text-muted-ui hover:text-text-ui"
-                        aria-label="Delete document"
-                        title="Delete document">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Delete confirmation dialog */}
-        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <DialogContent className="bg-neo-white border-4 border-neo-black">
-            <DialogHeader>
-              <DialogTitle>Delete Document</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete{" "}
-                <strong>{documentToDelete?.filename}</strong>? This action
-                cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setDeleteDialogOpen(false)}
-                disabled={deleting}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => void confirmDelete()}
-                disabled={deleting}>
-                {deleting ? "Deleting..." : "Delete"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Notes preview dialog */}
-        <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
-          <DialogContent className="bg-neo-white border-4 border-neo-black max-w-3xl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl text-neo-black">
-                📝 Study Notes Generated!
-              </DialogTitle>
-              <DialogDescription className="text-neo-black/70">
-                AI-generated study notes from your document
-              </DialogDescription>
-            </DialogHeader>
-            {currentNotes && (
-              <div className="py-4 space-y-4">
-                {/* Notes preview */}
-                <div className="max-h-[50vh] overflow-y-auto p-4 bg-neo-bg border-2 border-neo-black rounded-lg">
-                  <pre className="whitespace-pre-wrap text-sm text-neo-black font-mono leading-relaxed">
-                    {currentNotes.content}
-                  </pre>
-                </div>
-
-                {/* Info */}
-                <div className="flex items-center justify-center gap-2 text-sm text-neo-black/60">
-                  <span>📄 {currentNotes.filename}</span>
-                </div>
-              </div>
-            )}
-            <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setNotesDialogOpen(false)}
-                className="w-full sm:w-auto">
-                Close
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() =>
-                  currentNotes?.downloadUrl &&
-                  window.open(currentNotes.downloadUrl, "_blank")
-                }
-                disabled={!currentNotes}
-                className="w-full sm:w-auto">
-                📥 Download Markdown
-              </Button>
-              <Button
-                variant="default"
-                size="lg"
-                onClick={() => {
-                  // Extract document ID from the notes context
-                  const docId = documents.find(
-                    (d) =>
-                      currentNotes?.filename.includes(d.id) ||
-                      currentNotes?.filename.includes(
-                        d.filename.replace(/\.[^/.]+$/, ""),
-                      ),
-                  )?.id;
-                  if (docId) {
-                    setNotesDialogOpen(false);
-                    router.push(`/notes/${docId}`);
-                  }
-                }}
-                disabled={!currentNotes}
-                className="w-full sm:w-auto bg-primary hover:bg-primary/90">
-                � View Full Notes
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Mindmap viewer dialog */}
-        <Dialog open={mindmapDialogOpen} onOpenChange={setMindmapDialogOpen}>
-          <DialogContent className="bg-neo-white border-4 border-neo-black max-w-6xl max-h-[90vh] overflow-hidden">
-            <DialogHeader>
-              <DialogTitle className="text-neo-black">
-                {currentMindmap?.filename || "Generated Mindmap"}
-              </DialogTitle>
-              <DialogDescription className="text-neo-black/70">
-                Interactive mindmap visualization of your document structure.
-              </DialogDescription>
-            </DialogHeader>
-            {currentMindmap && (
-              <div className="mb-4 bg-neo-white">
-                <MindmapViewerUnified
-                  downloadUrl={currentMindmap.downloadUrl}
-                  documentName={currentMindmap.filename}
-                  format={currentMindmap.format}
-                  showControls
-                  allowFullscreen
-                  className="h-[600px] bg-neo-white"
-                />
-              </div>
-            )}
-            <DialogFooter>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  currentMindmap?.downloadUrl &&
-                  window.open(currentMindmap.downloadUrl, "_blank")
-                }
-                disabled={!currentMindmap}>
-                Download {currentMindmap?.format?.toUpperCase() || "Mindmap"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMindmapDialogOpen(false)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Flashcards preview dialog */}
-        <Dialog
-          open={flashcardsDialogOpen}
-          onOpenChange={setFlashcardsDialogOpen}>
-          <DialogContent className="bg-neo-white border-4 border-neo-black max-w-xl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl text-neo-black">
-                ✨ Flashcards Generated!
-              </DialogTitle>
-              <DialogDescription className="text-neo-black/70">
-                {currentFlashcards?.count ? (
-                  <>
-                    Successfully generated {currentFlashcards.count} flashcard
-                    {currentFlashcards.count !== 1 ? "s" : ""} from your
-                    document
-                  </>
-                ) : (
-                  "Your flashcards are ready"
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            {currentFlashcards && currentFlashcards.flashcards.length > 0 && (
-              <div className="py-6 space-y-4">
-                {/* Sample flashcard preview */}
-                <div className="bg-neo-bg border-2 border-neo-black rounded-lg p-4">
-                  <p className="text-xs text-neo-black/60 mb-2">
-                    Sample flashcard:
-                  </p>
-                  <p className="text-sm font-medium text-neo-black mb-2">
-                    Q: {currentFlashcards.flashcards[0]?.question}
-                  </p>
-                  <p className="text-sm text-neo-black/70">
-                    A:{" "}
-                    {currentFlashcards.flashcards[0]?.answer?.substring(0, 100)}
-                    {(currentFlashcards.flashcards[0]?.answer?.length || 0) >
-                    100
-                      ? "..."
-                      : ""}
-                  </p>
-                </div>
-
-                {/* Stats */}
-                <div className="flex items-center justify-center gap-8 text-center py-4">
-                  <div>
-                    <p className="text-3xl font-bold text-neo-black">
-                      {currentFlashcards.count}
-                    </p>
-                    <p className="text-xs text-neo-black/60 mt-1">
-                      Total Cards
-                    </p>
-                  </div>
-                  <div className="h-12 w-px bg-neo-black/20" />
-                  <div>
-                    <p className="text-3xl font-bold text-gray-900 dark:text-text-ui">
-                      {currentFlashcards.count}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-muted-ui mt-1">
-                      Ready to Review
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setFlashcardsDialogOpen(false)}
-                className="w-full sm:w-auto">
-                Close
-              </Button>
-              <Button
-                variant="default"
-                size="lg"
-                onClick={() => {
-                  setFlashcardsDialogOpen(false);
-                  router.push(`/flashcards/${currentFlashcards?.documentId}`);
-                }}
-                disabled={
-                  !currentFlashcards ||
-                  currentFlashcards.flashcards.length === 0
-                }
-                className="w-full sm:w-auto bg-primary hover:bg-primary/90">
-                <GraduationCap className="w-5 h-5 mr-2" />
-                Start Practice Session
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Synthesis result dialog */}
-        <Dialog
-          open={synthesisDialogOpen}
-          onOpenChange={setSynthesisDialogOpen}>
-          <DialogContent className="bg-neo-white border-4 border-neo-black max-w-4xl max-h-[85vh] overflow-hidden">
-            <DialogHeader>
-              <DialogTitle className="text-neo-black">
-                {synthesisResult?.type === "summary"
-                  ? "Unified Summary"
-                  : "Comparative Analysis"}
-              </DialogTitle>
-              <DialogDescription className="text-neo-black/70">
-                AI-generated synthesis from{" "}
-                {synthesisResult?.sources.length || 0} documents with source
-                attribution
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              {/* Markdown preview */}
-              <div className="max-h-[50vh] overflow-y-auto p-4 bg-neo-bg border-2 border-neo-black rounded-lg">
-                <pre className="whitespace-pre-wrap text-sm text-neo-black font-mono">
-                  {synthesisResult?.markdown}
-                </pre>
-              </div>
-
-              {/* Sources section */}
-              {synthesisResult && synthesisResult.sources.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-neo-black mb-2">
-                    Sources
-                  </h3>
-                  <div className="space-y-2">
-                    {synthesisResult.sources.map((source) => (
-                      <Card
-                        key={source.document_id}
-                        className="bg-neo-bg border-2 border-neo-black">
-                        <CardContent className="p-3">
-                          <p className="text-sm font-semibold text-neo-black mb-1">
-                            {source.filename}
-                          </p>
-                          <ul className="list-disc list-inside space-y-1">
-                            {source.key_points.map((point, idx) => (
-                              <li key={idx} className="text-xs text-neo-black/70">
-                                {point}
-                              </li>
-                            ))}
-                          </ul>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
+          <div className="flex flex-col md:flex-row justify-between items-center mb-6 bg-neo-white border-4 border-black shadow-neo-sm p-4">
+            <div className="flex items-center gap-4">
+              <button className="font-heavy text-sm text-black hover:text-neo-main">
+                {selected.size} selected
+              </button>
+              <button onClick={handleSelectAll} className="font-heavy text-sm text-neo-blue hover:text-neo-main">
+                Select All
+              </button>
+              <button onClick={handleClear} className="font-heavy text-sm text-neo-blue hover:text-neo-main">
+                Clear
+              </button>
             </div>
-            <DialogFooter>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleDownloadSynthesis}>
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSynthesisDialogOpen(false)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            <div className="flex items-center gap-2 mt-4 md:mt-0">
+              <span className="font-mono text-sm">Export as:</span>
+              <button 
+                onClick={() => setExportFormat('markdown')} 
+                className={`border-2 border-black text-black font-heavy text-xs px-3 py-1 transition-all ${
+                  exportFormat === 'markdown' ? 'bg-neo-black text-neo-white' : 'bg-neo-white hover:bg-neo-black hover:text-neo-white'
+                }`}
+              >
+                MARKDOWN
+              </button>
+              <button 
+                onClick={() => setExportFormat('pdf')} 
+                className={`border-2 border-black text-black font-heavy text-xs px-3 py-1 transition-all ${
+                  exportFormat === 'pdf' ? 'bg-neo-black text-neo-white' : 'bg-neo-white hover:bg-neo-black hover:text-neo-white'
+                }`}
+              >
+                PDF
+              </button>
+              <button 
+                onClick={handleExport} 
+                className="border-4 border-neo-blue bg-neo-blue text-white font-heavy text-sm px-6 py-2 hover:bg-neo-white hover:text-neo-blue transition-all"
+              >
+                Export
+              </button>
+            </div>
+          </div>
 
-        {/* Loading Dialog */}
-        <LoadingDialog open={loadingDialogOpen} message={loadingMessage} />
-      </main>
-    </ProtectedRoute>
+          <div className="space-y-6">
+            {loadingDocs && (
+              <div className="p-6 font-mono text-center">Loading documents...</div>
+            )}
+            
+            {!loadingDocs && documents.length === 0 && (
+              <div className="p-6 font-mono text-center">
+                No documents found. Upload one to get started.
+              </div>
+            )}
+            
+            {documents.map((doc) => {
+              const humanSize = typeof doc.size_bytes === 'number' ? formatBytes(doc.size_bytes) : '-';
+              const uploaded = doc.created_at ? new Date(doc.created_at).toLocaleString() : '-';
+              const type = doc.mime_type || doc.filename.split('.').pop() || '';
+              
+              return (
+                <div 
+                  key={doc.id} 
+                  className="doc-item bg-neo-white border-4 border-black shadow-neo flex flex-col hover:-translate-y-1 transition-transform duration-200"
+                >
+                  <div className="p-6">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(doc.id)}
+                          onChange={() => toggleSelect(doc.id)}
+                          className="w-4 h-4"
+                          aria-label={`Select ${doc.filename}`}
+                        />
+                        <h3 className="font-heavy text-2xl text-black truncate">{doc.filename}</h3>
+                      </div>
+                      <span className="font-mono text-xs uppercase bg-neo-accent text-black border-2 border-black px-2 py-1">
+                        {doc.status?.toUpperCase() || 'READY'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 mt-4 font-mono text-sm">
+                      <div>
+                        <p className="text-gray-600 uppercase">Size</p>
+                        <p className="font-bold text-black">{humanSize}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600 uppercase">Uploaded</p>
+                        <p className="font-bold text-black">{uploaded}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600 uppercase">Type</p>
+                        <p className="font-bold text-black">{type}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-2 border-t-4 border-black p-3 bg-neo-bg/50">
+                    <button 
+                      onClick={() => handleEmbed(doc.id)} 
+                      className="p-2 text-black hover:text-neo-purple transition-colors" 
+                      title="Generate Embedding"
+                    >
+                      ✨
+                    </button>
+                    <button 
+                      onClick={() => handleGenerateNotes(doc.id)} 
+                      className="p-2 text-black hover:text-neo-blue transition-colors" 
+                      title="Generate Study Notes"
+                    >
+                      📄
+                    </button>
+                    <button 
+                      onClick={() => handleGenerateMindmap(doc.id)} 
+                      className="p-2 text-black hover:text-neo-blue transition-colors" 
+                      title="Generate Mind Map"
+                    >
+                      🕸️
+                    </button>
+                    <button 
+                      onClick={() => handleGenerateFlashcards(doc.id)} 
+                      className="p-2 text-black hover:text-neo-blue transition-colors" 
+                      title="Generate Flashcard"
+                    >
+                      🎓
+                    </button>
+                    <button 
+                      onClick={() => window.open(`/document/${doc.id}`, '_blank')} 
+                      className="p-2 text-black hover:text-neo-accent transition-colors" 
+                      title="View Document"
+                    >
+                      👁️
+                    </button>
+                    <button 
+                      onClick={() => handleDownload(doc.id)} 
+                      className="p-2 text-black hover:text-neo-blue transition-colors" 
+                      title="Download Document"
+                    >
+                      ⬇️
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(doc.id)} 
+                      className="p-2 text-black hover:text-neo-main transition-colors" 
+                      title="Delete"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }
